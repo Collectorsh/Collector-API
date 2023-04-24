@@ -20,9 +20,6 @@ class UpdateArtistTwitterJob < ApplicationJob
 
     ArtistName.where("twitter IS NULL AND source != 'holaplex' AND created_at > '#{Time.now - 1.day}'").each do |artist|
       twitter = get_artist_twitter_exchange(artist.collection) if artist.source == 'exchange'
-      # twitter = get_artist_twitter_formfunction(artist.name) if artist.source == 'formfunction'
-      # twitter = get_artist_twitter_holaplex(artist.public_key) if artist.source == 'holaplex'
-
       artist.update_attribute(:twitter, twitter) if twitter
     rescue StandardError => e
       Bugsnag.notify(e)

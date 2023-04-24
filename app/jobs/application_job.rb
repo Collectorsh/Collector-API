@@ -15,26 +15,6 @@ class ApplicationJob < ActiveJob::Base
     nil
   end
 
-  def get_artist_twitter_formfunction(username)
-    response = Formfunction::Client.query(UserQuery::User, variables: { username: username })
-
-    twitter = response.data.user[0].twitter_name
-    "@#{twitter.strip}"
-  rescue StandardError => e
-    Rails.logger.error e.message
-    nil
-  end
-
-  def get_artist_twitter_holaplex(address)
-    response = Holaplex::Client.query(CreatorQuery::Creator, variables: { address: address })
-
-    twitter = response.data.creator.profile.handle
-    "@#{twitter.strip}"
-  rescue StandardError => e
-    Rails.logger.error e.message
-    nil
-  end
-
   def marketplace_link(auction)
     case auction.source
     when 'exchange'
