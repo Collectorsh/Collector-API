@@ -38,6 +38,7 @@ gem 'marcel'
 gem 'oauth'
 gem 'rbnacl', git: 'https://github.com/RubyCrypto/rbnacl'
 gem 'solana_rpc_ruby', git: 'https://github.com/richard-fisher/solana-rpc-ruby'
+gem 'twitter'
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
