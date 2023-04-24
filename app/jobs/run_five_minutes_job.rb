@@ -14,7 +14,7 @@ class RunFiveMinutesJob < ApplicationJob
     GetMintOwnerJob.perform_later unless already_running?('GetMintOwnerJob')
 
     UpdateExchangeOffersJob.perform_later unless already_running?('UpdateExchangeOffersJob')
-    UpdateCollectorActivitiesJob.perform_later unless already_running?('UpdateCollectorActivitiesJob')
+    # UpdateCollectorActivitiesJob.perform_later unless already_running?('UpdateCollectorActivitiesJob')
     UpdateCollectorListingsJob.perform_later unless already_running?('UpdateCollectorListingsJob')
 
     MissingArtistPubkeyJob.perform_later unless already_running?('MissingArtistPubkeyJob')
