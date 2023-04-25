@@ -146,7 +146,6 @@ GEM
     ffi-compiler (1.0.1)
       ffi (>= 1.0.0)
       rake
-    foreman (0.87.2)
     globalid (1.0.0)
       activesupport (>= 5.0)
     http (4.4.1)
@@ -304,7 +303,6 @@ DEPENDENCIES
   discordrb
   dotenv-rails
   down
-  foreman
   httparty
   listen (~> 3.3)
   mailgun-ruby (~> 1.2.5)

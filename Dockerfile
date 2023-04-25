@@ -7,8 +7,6 @@ WORKDIR /collector-api
 COPY . /collector-api
 RUN gem install bundler
 RUN bundle install
-RUN curl -f -L https://github.com/samuelvanderwaal/metaboss/releases/download/v0.11.1/metaboss-ubuntu-latest --output /usr/bin/metaboss
-RUN chmod +x /usr/bin/metaboss
 
 ENV RAILS_ENV production
 
