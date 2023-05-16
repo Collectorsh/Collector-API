@@ -43,12 +43,12 @@ class PurchaseController < ApplicationController
         total += p.lamports * ord['qty']
       end
       Rails.logger.debug "Checking for payment for #{total} to wallet #{w}"
-      trans = instructions.select { |i| i['parsed']['info']['destination'] == w }
-      unless trans[0]
+      trans = instructions.find { |i| i['parsed']['info']['destination'] == w }
+      unless trans
         return render json: { status: 'error',
                               msg: "Payment to #{w} not found in transaction" }
       end
-      unless trans[0]['parsed']['info']['lamports'] == total
+      unless trans['parsed']['info']['lamports'] == total
         return render json: { status: 'error',
                               msg: "Payment amount to #{w} is incorrect" }
       end
