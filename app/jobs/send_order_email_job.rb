@@ -21,6 +21,6 @@ class SendOrderEmailJob < ApplicationJob
       subject: "Collector Order #{purchase.order_number}",
       text: message
     }
-    MAILGUN.send_message 'notify.collector.sh', message_params
+    # send message
   end
 end
