@@ -74,4 +74,23 @@ class GalleriesController < ApplicationController
     mint = @mv.shuffle.pluck(:mint_address).first
     render json: { username: @user.username, twitter: @user.twitter_profile_image, mint: mint }
   end
+
+  def curated
+    results = []
+    found = 0
+
+    usernames = ENV['CURATED_GALLERIES'].split(',') # Split the environment variable value into an array of usernames
+    users = User.where(username: usernames).order(views: :desc).each do |user|
+      unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
+        next
+      end
+
+      results << { username: user.username, twitter_profile_image: user.twitter_profile_image, image: mv.image,
+                   mint: mv.mint_address }
+
+      found += 1
+      
+    end
+    render json: results
+  end
 end

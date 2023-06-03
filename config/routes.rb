@@ -121,6 +121,7 @@ Rails.application.routes.draw do
     post '/popular', to: 'galleries#popular'
     post '/daos', to: 'galleries#daos'
     post '/sample', to: 'galleries#sample'
+    post '/curated', to: 'galleries#curated'
   end
 
   scope :products do
