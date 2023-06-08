@@ -93,4 +93,20 @@ class GalleriesController < ApplicationController
     end
     render json: results
   end
+
+  def get_all
+    results = []
+    found = 0
+    users = User.where("username IS NOT NULL").order(views: :desc).each do |user|
+      unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
+        next
+      end
+
+      results << { username: user.username, twitter_profile_image: user.twitter_profile_image, image: mv.image,
+                   mint: mv.mint_address }
+
+      found += 1
+    end
+    render json: results
+  end
 end

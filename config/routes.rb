@@ -122,6 +122,8 @@ Rails.application.routes.draw do
     post '/daos', to: 'galleries#daos'
     post '/sample', to: 'galleries#sample'
     post '/curated', to: 'galleries#curated'
+    post '/get_all', to: 'galleries#get_all'
+
   end
 
   scope :products do
