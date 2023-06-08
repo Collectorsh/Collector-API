@@ -98,13 +98,13 @@ class GalleriesController < ApplicationController
     results = []
     users = User.where("username IS NOT NULL")
 
-    # # Filtering by user.username
-    # if params[:username].present?
-    #   users = users.where(username: params[:username])
-    # end
+    # Search by username
+    if params[:search].present?
+      users = users.where("username LIKE ?", "%#{params[:search]}%")
+    end
 
-    # Sorting by user.views
-    users = users.order(views: :desc)
+    # Sorting by username in ascending order
+    users = users.order(username: :asc)
 
     users = users.paginate(page: params[:page], per_page: params[:per_page || 10])
 
