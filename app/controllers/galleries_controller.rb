@@ -100,13 +100,16 @@ class GalleriesController < ApplicationController
 
     # Search by username
     if params[:search].present?
-      users = users.where("username LIKE ?", "%#{params[:search]}%")
+      users = users.where("username ILIKE ?", "%#{params[:search]}%")
     end
 
     # Sorting by username in ascending order
     users = users.order(username: :asc)
 
-    users = users.paginate(page: params[:page], per_page: params[:per_page || 10])
+    # Count of total possible options
+    total_options_count = users.count
+
+    users = users.paginate(page: params[:page], per_page: params[:per_page] || 10)
 
     users.each do |user|
       unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
@@ -116,6 +119,6 @@ class GalleriesController < ApplicationController
       results << { username: user.username, twitter_profile_image: user.twitter_profile_image, image: mv.image, mint: mv.mint_address }
     end
 
-    render json: results
+    render json: { galleries: results, total: total_options_count }
   end
 end
