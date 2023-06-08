@@ -96,17 +96,26 @@ class GalleriesController < ApplicationController
 
   def get_all
     results = []
-    found = 0
-    users = User.where("username IS NOT NULL").order(views: :desc).each do |user|
+    users = User.where("username IS NOT NULL")
+
+    # # Filtering by user.username
+    # if params[:username].present?
+    #   users = users.where(username: params[:username])
+    # end
+
+    # Sorting by user.views
+    users = users.order(views: :desc)
+
+    users = users.paginate(page: params[:page], per_page: params[:per_page || 10])
+
+    users.each do |user|
       unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
         next
       end
 
-      results << { username: user.username, twitter_profile_image: user.twitter_profile_image, image: mv.image,
-                   mint: mv.mint_address }
-
-      found += 1
+      results << { username: user.username, twitter_profile_image: user.twitter_profile_image, image: mv.image, mint: mv.mint_address }
     end
+
     render json: results
   end
 end

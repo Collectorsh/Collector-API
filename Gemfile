@@ -56,3 +56,5 @@ end
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 
 gem "bugsnag", "~> 6.24"
+
+gem 'will_paginate'
