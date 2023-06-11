@@ -123,12 +123,15 @@ class GalleriesController < ApplicationController
 
     users = users.paginate(page: params[:page], per_page: params[:per_page] || 10)
 
+  
     results = users.map do |user|
+      image = user.mint_visibilities.find_by("image != '' AND order_id = 1 AND visible = true")&.image || user.mint_visibilities.find_by("image != '' AND order_id IS NOT NULL AND visible = true")&.image
+      mint = user.mint_visibilities.find_by("image != '' AND order_id = 1 AND visible = true")&.mint_address || user.mint_visibilities.find_by("image != '' AND order_id IS NOT NULL AND visible = true")&.mint_address
       {
         username: user.username,
         twitter_profile_image: user.twitter_profile_image,
-        image: user.mint_visibilities.find_by("image != '' AND order_id IS NOT NULL AND visible = true")&.image,
-        mint: user.mint_visibilities.find_by("image != '' AND order_id IS NOT NULL AND visible = true")&.mint_address
+        image: image,
+        mint: mint
       }
     end.compact
 
