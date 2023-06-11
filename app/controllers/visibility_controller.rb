@@ -20,7 +20,7 @@ class VisibilityController < ApplicationController
   #         visible: token['visible'],
   #         order_id: token['order_id'],
   #         accept_offers: token['accept_offers'],
-  #         image: token['image'],
+  #         image: token['uri'],
   #         span: token['span'],
   #       )
   #       visibility.save!
@@ -45,7 +45,7 @@ class VisibilityController < ApplicationController
           visible: token['visible'],
           order_id: token['order_id'],
           accept_offers: token['accept_offers'],
-          image: token['image'],
+          image: token['uri'],
           span: token['span'],
           created_at: Time.current,
           updated_at: Time.current
