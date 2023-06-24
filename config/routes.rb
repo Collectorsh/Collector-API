@@ -87,6 +87,8 @@ Rails.application.routes.draw do
 
   scope :images do
     post '/upload', to: 'images#upload'
+    post '/upload_with_mints', to: 'images#upload_with_mints'
+    post '/upload_with_tokens', to: 'images#upload_with_tokens'
   end
 
   scope :listing do

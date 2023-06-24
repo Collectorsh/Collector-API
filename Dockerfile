@@ -2,6 +2,9 @@ FROM ruby:3.0.2
 
 RUN apt-get update && apt-get install -y libsodium-dev libimlib2 libimlib2-dev
 
+# Install libvips
+# RUN apt-get update -qq && apt-get install -y libvips42
+
 RUN mkdir /collector-api
 WORKDIR /collector-api
 COPY . /collector-api
