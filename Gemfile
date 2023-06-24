@@ -60,6 +60,5 @@ gem "bugsnag", "~> 6.24"
 gem 'will_paginate'
 
 gem 'activerecord-import'
-# gem "ruby-vips"
 gem 'mini_magick'
 gem 'cloudinary'

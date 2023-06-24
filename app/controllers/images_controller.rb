@@ -58,6 +58,8 @@ class ImagesController < ApplicationController
 
   def upload_with_tokens() 
     tokens = params[:tokens]
+
+    #tokens need "mint" and "image" keys"
     begin
       cloudinaryImages =  ImageUploadService.upload_batch(tokens)
       render json: cloudinaryImages, status: :ok
