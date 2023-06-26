@@ -96,43 +96,94 @@ class GalleriesController < ApplicationController
 
 
 
-  def get_all
-    users = User.joins(:mint_visibilities)
-                .where("username IS NOT NULL")
-                .where("EXISTS (
-                      SELECT 1
-                      FROM mint_visibilities mv
-                      WHERE mv.user_id = users.id
-                        AND mv.order_id IS NOT NULL
-                        AND mv.visible = true
-                    )")
-                .distinct
+  # def get_all
+  #   users = User.joins(:mint_visibilities)
+  #               .where("username IS NOT NULL")
+  #               .where("EXISTS (
+  #                     SELECT 1
+  #                     FROM mint_visibilities mv
+  #                     WHERE mv.user_id = users.id
+  #                       AND mv.order_id IS NOT NULL
+  #                       AND mv.visible = true
+  #                   )")
+  #               .distinct
 
-    # Search by username
-    if params[:search].present?
-      users = users.where("username ILIKE ?", "%#{params[:search]}%")
-    end
+  #   # Search by username
+  #   if params[:search].present?
+  #     users = users.where("username ILIKE ?", "%#{params[:search]}%")
+  #   end
 
-    # Sorting by username in ascending order
-    users = users.order(username: :asc)
+  #   # Sorting by username in ascending order
+  #   users = users.order(username: :asc)
 
-    # Count of total possible options
-    total_options_count = users.count
+  #   # Count of total possible options
+  #   total_options_count = users.count
 
-    users = users.paginate(page: params[:page], per_page: params[:per_page] || 10)
+  #   users = users.paginate(page: params[:page], per_page: params[:per_page] || 10)
 
   
-    results = users.map do |user|
-      image = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.image || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.image
-      mint = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.mint_address || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.mint_address
-      {
-        username: user.username,
-        twitter_profile_image: user.twitter_profile_image,
-        image: image,
-        mint: mint
-      }
-    end.compact
+  #   results = users.map do |user|
+  #     # image = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.image || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.image
+  #     mint = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.mint_address || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.mint_address
+  #     {
+  #       username: user.username,
+  #       twitter_profile_image: user.twitter_profile_image,
+  #       # image: image,
+  #       mint: mint
+  #     }
+  #   end.compact
 
-    render json: { galleries: results, total: total_options_count }
+  #   render json: { galleries: results, total: total_options_count }
+  # end
+  def get_all
+    begin
+      users = User.joins(:mint_visibilities)
+                  .where.not(username: nil)
+                  .where("EXISTS (
+                    SELECT 1
+                    FROM mint_visibilities mv
+                    WHERE mv.user_id = users.id
+                      AND mv.order_id IS NOT NULL
+                      AND mv.visible = true
+                  )")
+                  .select('users.*')  # Select all columns from users
+                  .order(username: :asc)
+                  .includes(:mint_visibilities)
+
+      # Search by username
+      if params[:search].present?
+        users = users.where("username ILIKE ?", "%#{params[:search]}%")
+      end
+
+      total_options_count = users.size
+
+      # Pagination
+      page = params[:page].to_i || 1
+      per_page = params[:per_page].to_i || 12
+      offset = (page - 1) * per_page
+      users = users.offset(offset).limit(per_page)
+
+      visible_mint_ids = MintVisibility.where(user_id: users.pluck(:id), visible: true)
+                                      .where.not(order_id: nil)
+                                      .where.not(mint_address: nil)
+                                      .pluck(:id)
+
+      mint_visibility_map = MintVisibility.where(id: visible_mint_ids)
+                                          .group_by(&:user_id)
+
+      results = users.map do |user|
+        visible_mints = mint_visibility_map[user.id]
+        mint = visible_mints.min_by(&:order_id)&.mint_address
+        {
+          username: user.username,
+          twitter_profile_image: user.twitter_profile_image,
+          mint: mint
+        }
+      end
+
+      render json: { galleries: results, total: total_options_count }
+    rescue => e
+      render json: { error: e.message }
+    end
   end
 end
