@@ -19,14 +19,18 @@ class ImageUploadService
   def self.upload_batch(tokens)
     results = []
     tokens.each do |token|
-      begin
-        cldResults = new(image_url: token["image"], mint: token["mint"]).call
-        puts "uploaded: #{cldResults["public_id"]}"
-        results << { id: cldResults["public_id"], mint: token["mint"] }
-      rescue => e
-        Rails.logger.error "#{token["mint"]}: #{e.message}"
-        puts "Error uploading image for mint #{token["mint"]}: #{e.message}"
-        results << { fallbackImage: token["image"], mint: token["mint"] }
+      if token.key?('error') || !token.key?('image')
+        results << token
+      else 
+        begin
+          cldResults = new(image_url: token["image"], mint: token["mint"]).call
+          puts "uploaded: #{cldResults["public_id"]}"
+          results << { id: cldResults["public_id"], mint: token["mint"] }
+        rescue => e
+          Rails.logger.error "#{token["mint"]}: #{e.message}"
+          puts "Error uploading image for mint #{token["mint"]}: #{e.message}"
+          results << { fallbackImage: token["image"], mint: token["mint"], error: "Error Optimizating Image" }
+        end
       end
     end
 
