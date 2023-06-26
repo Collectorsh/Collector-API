@@ -11,7 +11,7 @@ class GalleriesController < ApplicationController
     found = 0
 
     User.where("username IS NOT NULL").order(created_at: :desc).each do |user|
-      unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
+      unless (mv = user.mint_visibilities.where("order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
         next
       end
 
@@ -30,7 +30,7 @@ class GalleriesController < ApplicationController
     found = 0
 
     User.where("username IS NOT NULL AND dao = false").order(views: :desc).each do |user|
-      unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(
+      unless (mv = user.mint_visibilities.where("order_id IS NOT NULL AND visible = true").order(
         order_id: :asc, created_at: :desc
       ).limit(1).first)
         next
@@ -51,7 +51,7 @@ class GalleriesController < ApplicationController
     found = 0
 
     User.where("username IS NOT NULL AND dao = true").order(views: :desc).each do |user|
-      unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
+      unless (mv = user.mint_visibilities.where("order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
         next
       end
 
@@ -68,7 +68,7 @@ class GalleriesController < ApplicationController
     users = User.where("username IS NOT NULL AND views > 100")
     users.shuffle.each do |user|
       @user = user
-      @mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true")
+      @mv = user.mint_visibilities.where("order_id IS NOT NULL AND visible = true")
       break if @mv
     end
     mint = @mv.shuffle.pluck(:mint_address).first
@@ -81,7 +81,7 @@ class GalleriesController < ApplicationController
 
     usernames = ENV['CURATED_GALLERIES'].split(',') # Split the environment variable value into an array of usernames
     users = User.where(username: usernames).order(views: :desc).each do |user|
-      unless (mv = user.mint_visibilities.where("image IS NOT NULL AND order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
+      unless (mv = user.mint_visibilities.where("order_id IS NOT NULL AND visible = true").order(order_id: :asc).limit(1).first)
         next
       end
 
@@ -103,8 +103,6 @@ class GalleriesController < ApplicationController
                       SELECT 1
                       FROM mint_visibilities mv
                       WHERE mv.user_id = users.id
-                        AND mv.image != ''
-                        AND mv.image IS NOT NULL
                         AND mv.order_id IS NOT NULL
                         AND mv.visible = true
                     )")
@@ -125,8 +123,8 @@ class GalleriesController < ApplicationController
 
   
     results = users.map do |user|
-      image = user.mint_visibilities.find_by("image != '' AND order_id = 1 AND visible = true")&.image || user.mint_visibilities.find_by("image != '' AND order_id IS NOT NULL AND visible = true")&.image
-      mint = user.mint_visibilities.find_by("image != '' AND order_id = 1 AND visible = true")&.mint_address || user.mint_visibilities.find_by("image != '' AND order_id IS NOT NULL AND visible = true")&.mint_address
+      image = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.image || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.image
+      mint = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.mint_address || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.mint_address
       {
         username: user.username,
         twitter_profile_image: user.twitter_profile_image,
