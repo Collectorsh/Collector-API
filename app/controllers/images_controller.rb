@@ -43,6 +43,7 @@ class ImagesController < ApplicationController
           end
         rescue StandardError => e
           puts "Error Getting offchain Metadata: #{e.message}"
+          tokenMetadatas << { mint: token["nftMint"], error: "Error Fetching Offchain Metadata" }
         end
       end
 
@@ -58,6 +59,8 @@ class ImagesController < ApplicationController
 
   def upload_with_tokens() 
     tokens = params[:tokens]
+
+    #tokens need "mint" and "image" keys"
     begin
       cloudinaryImages =  ImageUploadService.upload_batch(tokens)
       render json: cloudinaryImages, status: :ok
