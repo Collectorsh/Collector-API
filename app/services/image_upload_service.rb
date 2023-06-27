@@ -72,25 +72,27 @@ class ImageUploadService
 
     image = MiniMagick::Image.open(image_file.path)
 
-    target_size = MAX_FILE_SIZE
-    max_iterations = 10
-    iteration = 0
-    min_width = 0
-    max_width = image.width
-    width = image.width
+    # target_size = MAX_FILE_SIZE
+    # max_iterations = 10
+    # iteration = 0
+    # min_width = 0
+    # max_width = image.width
+    # width = image.width
 
-    while image.size > target_size && iteration < max_iterations && min_width < max_width
-      width = (min_width + max_width) / 2
-      image.resize("#{width}x")
+    # while image.size > target_size && iteration < max_iterations && min_width < max_width
+    #   width = (min_width + max_width) / 2
+    #   image.resize("#{width}x")
 
-      if image.size > target_size
-        max_width = width - 1
-      else
-        min_width = width + 1
-      end
+    #   if image.size > target_size
+    #     max_width = width - 1
+    #   else
+    #     min_width = width + 1
+    #   end
 
-      iteration += 1
-    end
+    #   iteration += 1
+    # end
+    width = 1500
+    image.resize("#{width}x")
 
     image.write(image_file.path)
 
