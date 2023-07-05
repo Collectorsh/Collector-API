@@ -160,4 +160,6 @@ Rails.application.routes.draw do
   get '/twitter/profile_image', to: "twitter#profile_image"
 
   match '/rpc', to: "rpc#proxy", via: %w[get post]
+
+  mount ActionCable.server => '/cable'
 end
