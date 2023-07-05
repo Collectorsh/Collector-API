@@ -1,0 +1,2 @@
+class OptimizedImage < ApplicationRecord
+end
