@@ -5,69 +5,176 @@
 
     MAX_FILE_SIZE = 20 * 1000 * 1000 # 20 MB
 
-    attr_reader :image_url, :mint
+    attr_reader :image_url, :mint, :username, :large
 
-    def initialize(image_url:, mint:)
+    def initialize(image_url:, mint:, username:)
       @image_url = image_url
       @mint = mint
+      @username = username
     end
 
     def call
       upload_image
     end
 
-    def self.upload_batch(tokens)
+    def call_large_image
+      upload_large_image
+    end
+
+    # def self.upload_batch(tokens, username)
+    #   results = []
+    #   tokens.each do |token|
+    #     # skip if no mint
+    #     next unless token.key?('mint') && token['mint'].present?
+
+    #     if token.key?('error') || !token.key?('image')
+    #       optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
+    #       optimized.update(optimized: "Error", error_message: "No Image Metadata Found: #{token['error']}")
+    #       results << token
+    #     else 
+    #       begin
+    #         cldResults = new(image_url: token["image"], mint: token["mint"]).call
+
+    #         puts "uploaded: #{cldResults["public_id"]}"
+
+    #         optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
+    #         optimized.update(optimized: "True", error_message: nil)
+
+    #         results << { imageId: cldResults["public_id"], mint: token["mint"] }
+    #       rescue => e
+    #         Rails.logger.error "#{token["mint"]}: #{e.message}"
+    #         puts "Error uploading image for mint #{token["mint"]}: #{e.message}"
+    #         optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
+    #         optimized.update(optimized: "Error", error_message: "Error Optimizing: #{e.message}")
+    #         results << { fallbackImage: token["image"], mint: token["mint"], error: "Error Optimizating Image" }
+    #       end
+    #     end
+    #   end
+
+    #   results
+    # end
+    def self.upload_batch(tokens, username)
       results = []
+      later = []
       tokens.each do |token|
         # skip if no mint
         next unless token.key?('mint') && token['mint'].present?
 
         if token.key?('error') || !token.key?('image')
-          optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
-          optimized.update(optimized: "Error", error_message: "No Image Metadata Found: #{token['error']}")
+          ActionCable.server.broadcast("notifications_#{username}", {
+            message: 'Optimizing Error', 
+            data: { mint: token["mint"], error: "No Image Metadata Found: #{token['error']}" }
+          })
           results << token
         else 
           begin
-            cldResults = new(image_url: token["image"], mint: token["mint"]).call
+            cldResult = new(image_url: token["image"], mint: token["mint"], username: username).call
 
-            puts "uploaded: #{cldResults["public_id"]}"
+            if cldResult["public_id"].present?
+              puts "Uploaded: #{token["mint"]}"
+              ActionCable.server.broadcast("notifications_#{username}", {
+                message: 'Image Optimized', 
+                data: { mint: token["mint"], imageId: cldResult["public_id"] }
+              })
 
-            optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
-            optimized.update(optimized: "True", error_message: nil)
+              results << { imageId: cldResult['public_id'], mint: token['mint'] }
+            else 
+              puts "Saving large upload for last: #{token['mint']}"
+              ActionCable.server.broadcast("notifications_#{username}", {
+                message: 'Image Queued', 
+                data: { mint: token["mint"], imageId: nil }
+              })
 
-            results << { imageId: cldResults["public_id"], mint: token["mint"] }
+              later << token
+            end
           rescue => e
-            Rails.logger.error "#{token["mint"]}: #{e.message}"
             puts "Error uploading image for mint #{token["mint"]}: #{e.message}"
-            optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
-            optimized.update(optimized: "Error", error_message: "Error Optimizing: #{e.message}")
-            results << { fallbackImage: token["image"], mint: token["mint"], error: "Error Optimizating Image" }
+            ActionCable.server.broadcast("notifications_#{username}", {
+              message: 'Optimizing Error', 
+              data: { mint: token['mint'], error: "Error Optimizating Image: #{e.message}" }
+            })
+            results << { fallbackImage: token['image'], mint: token['mint'], error: "Error Optimizating Image: #{e.message}" }
           end
         end
       end
+      
+      optimizedResults = results.map do |result|
+        if result.key?(:imageId) 
+          { 
+            mint_address: result[:mint], 
+            optimized: 'True', 
+            error_message: nil, 
+            created_at: Time.current,
+            updated_at: Time.current
+          }
+        else 
+          { 
+            mint_address: result[:mint], 
+            optimized: 'Error', 
+            error_message: result[:error] || "Error Optimizating Image", 
+            created_at: Time.current,
+            updated_at: Time.current
+          }
+        end
+      end
+
+      OptimizedImage.upsert_all(optimizedResults, unique_by: :mint_address) if optimizedResults.present?
+
+      later.each do |token|
+        cldResult = new(image_url: token["image"], mint: token["mint"], username: username).call_large_image
+      end
+
+      puts "Done Uploading #{results.count} Images, #{later.count} Resized"
 
       results
     end
+
 
     private
 
     def upload_image
       begin
-        puts "Uploading image: #{mint}"
         response = Cloudinary::Uploader.upload(image_url, resource_type: "auto", public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{mint}", overwrite: true)
         response
       rescue => e
         if e.message.include?("File size too large")
-          puts "Image too large, scaling down: #{mint}"
-          image_file = download_image(image_url)
-          scale_image(image_file)
-          response = Cloudinary::Uploader.upload(image_file.path, resource_type: "auto", public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{mint}", overwrite: true)
-          image_file.close
-          image_file.unlink  # delete the temporary file
-          response
+          # puts "Queueing Scale Down Job: #{mint}"
+          # OptimizeImageJob.perform_later(image_url, mint, username)
+
+          { }
         else
           raise
         end
+      end
+    end
+
+    def upload_large_image
+      
+      begin
+        puts "Image too large, Scaling Down: #{mint}"
+        image_file = download_image(image_url)
+        scale_image(image_file)
+        puts "resized"
+        cldResult = Cloudinary::Uploader.upload(image_file.path, resource_type: "auto", public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{mint}", overwrite: true)
+        image_file.close
+        image_file.unlink # delete the temporary file
+        
+        ActionCable.server.broadcast("notifications_#{username}", {
+          message: 'Image Optimized', 
+          data: { mint: mint, imageId: cldResult["public_id"] }
+        })
+
+        optimized = OptimizedImage.where(mint_address: mint).first_or_create
+        optimized.update(optimized: "True", error_message: nil)
+        puts "Uploaded Large: #{mint}"
+      rescue => e
+        puts "Error uploading large image: #{e.message}"
+        ActionCable.server.broadcast("notifications_#{username}", {
+          message: 'Optimizing Error', 
+          data: { mint: mint, error: e.message }
+        })
+        optimized = OptimizedImage.where(mint_address: mint).first_or_create
+        optimized.update(optimized: "Error", error_message: "Error Optimizing: #{e.message}")
       end
     end
 
@@ -82,7 +189,14 @@
 
     def scale_image(image_file)
       image = MiniMagick::Image.open(image_file.path)
-      image.resize("#{2000}x")
+      
+      scaleSize = 2000
+
+      if(image.width < scaleSize) 
+        scaleSize = image.width * 0.75
+      end
+
+      image.resize("#{scaleSize}x")
       image.write(image_file.path)
     end
   end
