@@ -7,5 +7,7 @@ class CreatorController < ApplicationController
     artists = ArtistName.where(public_key: creators).where("name IS NOT NULL")
 
     render json: artists
+  rescue => e
+    puts "error: #{e.message}"
   end
 end

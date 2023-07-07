@@ -8,9 +8,12 @@ COPY . /collector-api
 RUN gem install bundler
 RUN bundle install
 
+# RUN gem install foreman
+
 ENV RAILS_ENV production
 
 EXPOSE 3001
 
 # Start the main process.
 CMD ["bundle", "exec", "puma", "-p", "3001", "-w", "0", "-t", "5:15"]
+# CMD ["foreman", "start"]

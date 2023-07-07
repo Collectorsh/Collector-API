@@ -37,8 +37,8 @@ class VisibilityController < ApplicationController
 
   def visibility_and_order
     user = User.where("public_keys LIKE '%#{params[:public_key]}%'").last
-    userTokenMints = params[:mints]
-
+    userTokens = params[:tokens] || []
+    userTokenMints = userTokens.map { |token| token['mint'] }
     return render json: { mints: [], default: true } if user.nil?
     # render json: { mints: user.mint_visibilities, default: user.default_visibility }
 
@@ -46,15 +46,22 @@ class VisibilityController < ApplicationController
 
     optimized_images = OptimizedImage.where(mint_address: userTokenMints).index_by(&:mint_address)
 
-    results = userTokenMints.map do |mint|
+    results = userTokens.map do |token|
+      mint = token['mint'] || token['mint_address']
       mint_visibility = mint_visibilities.find { |mv| mv.mint_address == mint }
       optimized_image = optimized_images[mint]
       merged_hash = {
+        creator: token['creator'],
+        name: token['name'],
+        uri: token['uri'],
+        owner: token['owner'],
+        mint: mint,
         order_id: nil,
-        visible: user.default_visibility,
+        visible: user['default_visibility'],
         span: 1,
         mint_address: mint,
       }
+
       merged_hash[:optimized] = optimized_image&.optimized if optimized_image
       merged_hash[:error_message] = optimized_image&.error_message if optimized_image
 
@@ -62,8 +69,19 @@ class VisibilityController < ApplicationController
 
       merged_hash
     end
+
+    # # Merge mint_visibilities items not found in userTokenMints
+    # remaining_mint_visibilities = mint_visibilities.reject { |mv| userTokenMints.include?(mv.mint_address) }
+
+    # remaining = []
     
-    render json: { mints: results, default: user.default_visibility }
+    # remaining_mint_visibilities.each do |mv|
+    #   new_mv = mv.attributes.merge('mint' => mv['mint_address'])
+    #   remaining << new_mv # Push the new hash into the array
+    # end
+    # results += remaining
+      
+    render json: { tokens: results, default: user.default_visibility }
   rescue => e
     puts "error getting visibilities: #{e.message}"
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }
