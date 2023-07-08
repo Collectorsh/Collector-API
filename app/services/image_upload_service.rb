@@ -5,12 +5,12 @@
 
     MAX_FILE_SIZE = 20 * 1000 * 1000 # 20 MB
 
-    attr_reader :image_url, :mint, :username, :large
+    attr_reader :image_url, :mint, :socket_id, :large
 
-    def initialize(image_url:, mint:, username:)
+    def initialize(image_url:, mint:, socket_id:)
       @image_url = image_url
       @mint = mint
-      @username = username
+      @socket_id = socket_id
     end
 
     def call
@@ -21,7 +21,7 @@
       upload_large_image
     end
 
-    # def self.upload_batch(tokens, username)
+    # def self.upload_batch(tokens, socket_id)
     #   results = []
     #   tokens.each do |token|
     #     # skip if no mint
@@ -53,7 +53,8 @@
 
     #   results
     # end
-    def self.upload_batch(tokens, username)
+    def self.upload_batch(tokens, socket_id)
+      puts "WEBSOCKET ID: #{socket_id}"
       results = []
       later = []
       tokens.each do |token|
@@ -61,18 +62,18 @@
         next unless token.key?('mint') && token['mint'].present?
 
         if token.key?('error') || !token.key?('image')
-          ActionCable.server.broadcast("notifications_#{username}", {
+          ActionCable.server.broadcast("notifications_#{socket_id}", {
             message: 'Optimizing Error', 
             data: { mint: token["mint"], error: "No Image Metadata Found: #{token['error']}" }
           })
           results << token
         else 
           begin
-            cldResult = new(image_url: token["image"], mint: token["mint"], username: username).call
+            cldResult = new(image_url: token["image"], mint: token["mint"], socket_id: socket_id).call
 
             if cldResult["public_id"].present?
               puts "Uploaded: #{token["mint"]}"
-              ActionCable.server.broadcast("notifications_#{username}", {
+              ActionCable.server.broadcast("notifications_#{socket_id}", {
                 message: 'Image Optimized', 
                 data: { mint: token["mint"], imageId: cldResult["public_id"] }
               })
@@ -80,7 +81,7 @@
               results << { imageId: cldResult['public_id'], mint: token['mint'] }
             else 
               puts "Saving large upload for last: #{token['mint']}"
-              ActionCable.server.broadcast("notifications_#{username}", {
+              ActionCable.server.broadcast("notifications_#{socket_id}", {
                 message: 'Image Queued', 
                 data: { mint: token["mint"], imageId: nil }
               })
@@ -89,7 +90,7 @@
             end
           rescue => e
             puts "Error uploading image for mint #{token["mint"]}: #{e.message}"
-            ActionCable.server.broadcast("notifications_#{username}", {
+            ActionCable.server.broadcast("notifications_#{socket_id}", {
               message: 'Optimizing Error', 
               data: { mint: token['mint'], error: "Error Optimizating Image: #{e.message}" }
             })
@@ -121,7 +122,7 @@
       OptimizedImage.upsert_all(optimizedResults, unique_by: :mint_address) if optimizedResults.present?
 
       later.each do |token|
-        cldResult = new(image_url: token["image"], mint: token["mint"], username: username).call_large_image
+        cldResult = new(image_url: token["image"], mint: token["mint"], socket_id: socket_id).call_large_image
       end
 
       puts "Done Uploading #{results.count} Images, #{later.count} Resized"
@@ -139,7 +140,7 @@
       rescue => e
         if e.message.include?("File size too large")
           # puts "Queueing Scale Down Job: #{mint}"
-          # OptimizeImageJob.perform_later(image_url, mint, username)
+          # OptimizeImageJob.perform_later(image_url, mint, socket_id)
 
           { }
         else
@@ -159,7 +160,7 @@
         image_file.close
         image_file.unlink # delete the temporary file
         
-        ActionCable.server.broadcast("notifications_#{username}", {
+        ActionCable.server.broadcast("notifications_#{socket_id}", {
           message: 'Image Optimized', 
           data: { mint: mint, imageId: cldResult["public_id"] }
         })
@@ -169,7 +170,7 @@
         puts "Uploaded Large: #{mint}"
       rescue => e
         puts "Error uploading large image: #{e.message}"
-        ActionCable.server.broadcast("notifications_#{username}", {
+        ActionCable.server.broadcast("notifications_#{socket_id}", {
           message: 'Optimizing Error', 
           data: { mint: mint, error: e.message }
         })

@@ -10,12 +10,12 @@ class ImagesController < ApplicationController
 
   def upload_with_mints
     mints = params[:mints]
-    username = params[:username]
+    socket_id = params[:socket_id]
     begin
-      ActionCable.server.broadcast("notifications_#{username}", {
+      ActionCable.server.broadcast("notifications_#{socket_id}", {
         message: "Begining uploads for #{mints.count} images", 
       })
-      puts "Uploading #{mints.count} images for #{username}"
+      puts "Uploading #{mints.count} images for #{socket_id}"
       # assign all mints to pending
       pending = mints.map do |mint|
         { 
@@ -26,7 +26,9 @@ class ImagesController < ApplicationController
           updated_at: Time.current
         }
       end
-      OptimizedImage.upsert_all(pending, unique_by: :mint_address)
+      # OptimizedImage.upsert_all(pending, unique_by: :mint_address)
+
+      #TODO PUT THIS BACK IN
 
       puts"Finsihed upsert"
 
@@ -66,14 +68,6 @@ class ImagesController < ApplicationController
         request_count += 1
       end
       
-      # response = HTTParty.post("https://rest-api.hellomoon.io/v0/nft/mint_information", 
-      #   body: { nftMint: mints }.to_json, 
-      #   headers: { 
-      #     'Content-Type' => 'application/json',
-      #     'authorization' => "Bearer #{ENV['HELLOMOON_API_KEY']}"
-      #   } 
-      # )
-      # onChainTokens = response['data']
       puts "Got #{onChainTokens.count} onchain tokens"
 
       tokenMetadatas = []
@@ -133,7 +127,7 @@ class ImagesController < ApplicationController
         OptimizedImage.upsert_all(unoptimzedRecords, unique_by: :mint_address)
 
 
-        ActionCable.server.broadcast("notifications_#{username}", {
+        ActionCable.server.broadcast("notifications_#{socket_id}", {
           message: 'Image Metadata Errors', 
           data: { tokens: unoptimizedTokens , error: "Error Fetching Image From Metadata" }
         })
@@ -146,14 +140,14 @@ class ImagesController < ApplicationController
       threads = batches.map do |batch|
         Thread.new do
           ActiveRecord::Base.connection_pool.with_connection do
-            ImageUploadService.upload_batch(batch, username)
+            ImageUploadService.upload_batch(batch, socket_id)
           end
         end
       end
 
       threads.each(&:join)
 
-      render status: :ok
+      render json: { completed: tokenMetadatas.count}, status: :ok
 
       # for individual uploads method (depreicating)
       # cloudinaryImages = ImageUploadService.upload_batch(tokenMetadatas)
@@ -166,13 +160,13 @@ class ImagesController < ApplicationController
 
   def upload_with_tokens() 
     tokens = params[:tokens]
-    username = params[:username]
+    socket_id = params[:socket_id]
 
     begin
       # start jobs (TODO: once async workers are set up switch to permorm_later)
       # tokens.each do |token|
       #   if token.key?('image') && token['image'].present && token['mint'].present?
-      #     OptimizeImageJob.perform_now(token["image"], token["mint"], username)
+      #     OptimizeImageJob.perform_now(token["image"], token["mint"], socket_id)
       #   else
       #     puts "No Image in Token: #{token}"
       #   end
@@ -187,7 +181,7 @@ class ImagesController < ApplicationController
       threads = batches.map do |batch|
         Thread.new do
           ActiveRecord::Base.connection_pool.with_connection do
-            ImageUploadService.upload_batch(batch, username)
+            ImageUploadService.upload_batch(batch, socket_id)
           end
         end
       end
