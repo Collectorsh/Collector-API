@@ -26,9 +26,7 @@ class ImagesController < ApplicationController
           updated_at: Time.current
         }
       end
-      # OptimizedImage.upsert_all(pending, unique_by: :mint_address)
-
-      #TODO PUT THIS BACK IN
+      OptimizedImage.upsert_all(pending, unique_by: :mint_address)
 
       puts"Finsihed upsert"
 

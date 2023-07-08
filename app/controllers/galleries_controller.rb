@@ -94,47 +94,6 @@ class GalleriesController < ApplicationController
     render json: results
   end
 
-
-
-  # def get_all
-  #   users = User.joins(:mint_visibilities)
-  #               .where("username IS NOT NULL")
-  #               .where("EXISTS (
-  #                     SELECT 1
-  #                     FROM mint_visibilities mv
-  #                     WHERE mv.user_id = users.id
-  #                       AND mv.order_id IS NOT NULL
-  #                       AND mv.visible = true
-  #                   )")
-  #               .distinct
-
-  #   # Search by username
-  #   if params[:search].present?
-  #     users = users.where("username ILIKE ?", "%#{params[:search]}%")
-  #   end
-
-  #   # Sorting by username in ascending order
-  #   users = users.order(username: :asc)
-
-  #   # Count of total possible options
-  #   total_options_count = users.count
-
-  #   users = users.paginate(page: params[:page], per_page: params[:per_page] || 10)
-
-  
-  #   results = users.map do |user|
-  #     # image = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.image || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.image
-  #     mint = user.mint_visibilities.find_by("order_id = 1 AND visible = true")&.mint_address || user.mint_visibilities.find_by("order_id IS NOT NULL AND visible = true")&.mint_address
-  #     {
-  #       username: user.username,
-  #       twitter_profile_image: user.twitter_profile_image,
-  #       # image: image,
-  #       mint: mint
-  #     }
-  #   end.compact
-
-  #   render json: { galleries: results, total: total_options_count }
-  # end
   def get_all
     begin
       users = User.joins(:mint_visibilities)
