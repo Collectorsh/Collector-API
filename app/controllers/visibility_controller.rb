@@ -50,7 +50,7 @@ class VisibilityController < ApplicationController
       mint = token['mint'] || token['mint_address']
       mint_visibility = mint_visibilities.find { |mv| mv.mint_address == mint }
       optimized_image = optimized_images[mint]
-      merged_hash = {
+      merged_hash = { #default
         creator: token['creator'],
         name: token['name'],
         uri: token['uri'],
@@ -65,7 +65,7 @@ class VisibilityController < ApplicationController
       merged_hash[:optimized] = optimized_image&.optimized if optimized_image
       merged_hash[:error_message] = optimized_image&.error_message if optimized_image
 
-      merged_hash.merge!(mint_visibility&.attributes || {})
+      merged_hash.merge!(mint_visibility&.attributes || {}) # mint visibilities should override defaults
 
       merged_hash
     end
