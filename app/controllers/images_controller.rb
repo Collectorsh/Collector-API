@@ -8,6 +8,7 @@ class ImagesController < ApplicationController
     end
   end
 
+  #DEPRICATING
   def upload_with_mints
     mints = params[:mints]
     socket_id = params[:socket_id]
@@ -48,6 +49,7 @@ class ImagesController < ApplicationController
               'authorization' => "Bearer #{ENV['HELLOMOON_API_KEY']}"
             } 
           )
+
           # You can use rescue block here to handle the error same as catch in javascript
         rescue => e
           puts e.message
@@ -146,34 +148,85 @@ class ImagesController < ApplicationController
       threads.each(&:join)
 
       render json: { completed: tokenMetadatas.count}, status: :ok
-
-      # for individual uploads method (depreicating)
-      # cloudinaryImages = ImageUploadService.upload_batch(tokenMetadatas)
-      # render json: cloudinaryImages, status: :ok
     rescue => e
       puts "Error Getting Token onchain Metadatas: #{e.message}"
       render json: { error: 'Error Getting Token Metadatas' }, status: :internal_server_error
     end
   end
 
+  def upload_single_mint
+    mint = params[:mint]
+    socket_id = params[:socket_id]
+    begin
+      optimized = OptimizedImage.where(mint_address: mint).first_or_create
+      optimized.update(optimized: "Pending", error_message: nil)
+
+      res = HTTParty.post("https://api.helius.xyz/v0/token-metadata?api-key=#{ENV['HELIUS_API_KEY']}",
+        body: {
+          mintAccounts: [mint],
+          includeOffChain: true
+        }.to_json,
+        headers: { 
+          'Content-Type' => 'application/json',
+        } 
+      )
+
+      if !res.success?
+        puts "Error Fetching Helius Metadata: #{res.message}"
+        return render json: { error: 'Error Fetching Metadata Image' }, status: :unprocessable_entity
+      end
+
+      helius_res = JSON.parse(res.body)
+
+      image = helius_res.dig(0, 'offChainMetadata', 'metadata', 'image')
+
+      if !image.present?
+        puts "No Image in Metadata: #{helius_res.dig(0, 'offChainMetadata', 'metadata')}"
+        optimized.update(optimized: "Error", error_message: "Error Fetching Metadata Image")
+        ActionCable.server.broadcast("notifications_#{socket_id}", {
+          message: 'Optimizing Error', 
+          data: { mint: mint, error: "Error Optimizating Image: Couldnt Fetch Metadata Image" }
+        })
+        return render json: { error: 'Error Fetching Metadata Image' }, status: :unprocessable_entity
+      end
+
+      mungedToken = {
+        'mint' => mint,
+        'image'=> image,
+      }
+
+      ImageUploadService.upload_batch([mungedToken], socket_id)
+    
+      render json: { completed: 1}, status: :ok
+    rescue => e
+      puts "Error Omptimizing Image from Mint: #{e.message}"
+      render json: { error: 'Error Omptimizing Image from Mint' }, status: :internal_server_error
+    end
+  end
+          
   def upload_with_tokens() 
     tokens = params[:tokens]
     socket_id = params[:socket_id]
 
     begin
-      # start jobs (TODO: once async workers are set up switch to permorm_later)
-      # tokens.each do |token|
-      #   if token.key?('image') && token['image'].present && token['mint'].present?
-      #     OptimizeImageJob.perform_now(token["image"], token["mint"], socket_id)
-      #   else
-      #     puts "No Image in Token: #{token}"
-      #   end
-      # end
-      # unoptimized = tokens.select { |token| !token.key?('image') || !token['image'].present? }
-      # render json: unoptimized, status: :ok
+      mints = tokens.map { |token| token['mint'] }
 
+      puts "Uploading #{mints.count} images for #{socket_id}"
+      # assign all mints to pending
+      pending = mints.map do |mint|
+        { 
+          mint_address: mint, 
+          optimized: 'Pending', 
+          error_message: nil, 
+          created_at: Time.current,
+          updated_at: Time.current
+        }
+      end
+      OptimizedImage.upsert_all(pending, unique_by: :mint_address)
 
-      batch_size = 4
+      puts"Finsihed upsert"
+
+      batch_size = 8
       batches = tokens.each_slice(batch_size).to_a
 
       threads = batches.map do |batch|
@@ -186,10 +239,10 @@ class ImagesController < ApplicationController
 
       threads.each(&:join)
 
-      render json: cloudinaryImages, status: :ok
+      render json: { completed: tokens.count}, status: :ok
     rescue => e
-      puts "Error Uploading to Cloudinary with token: #{e.message}"
-      render json: { error: 'Error Uploading to Cloudinary with token' }, status: :internal_server_error
+      puts "Error Uploading to Cloudinary with tokens: #{e.message}"
+      render json: { error: 'Error Uploading to Cloudinary with tokens' }, status: :internal_server_error
     end
   end
 

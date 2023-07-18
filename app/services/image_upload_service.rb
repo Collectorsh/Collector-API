@@ -21,43 +21,12 @@
       upload_large_image
     end
 
-    # def self.upload_batch(tokens, socket_id)
-    #   results = []
-    #   tokens.each do |token|
-    #     # skip if no mint
-    #     next unless token.key?('mint') && token['mint'].present?
-
-    #     if token.key?('error') || !token.key?('image')
-    #       optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
-    #       optimized.update(optimized: "Error", error_message: "No Image Metadata Found: #{token['error']}")
-    #       results << token
-    #     else 
-    #       begin
-    #         cldResults = new(image_url: token["image"], mint: token["mint"]).call
-
-    #         puts "uploaded: #{cldResults["public_id"]}"
-
-    #         optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
-    #         optimized.update(optimized: "True", error_message: nil)
-
-    #         results << { imageId: cldResults["public_id"], mint: token["mint"] }
-    #       rescue => e
-    #         Rails.logger.error "#{token["mint"]}: #{e.message}"
-    #         puts "Error uploading image for mint #{token["mint"]}: #{e.message}"
-    #         optimized = OptimizedImage.where(mint_address: token["mint"]).first_or_create
-    #         optimized.update(optimized: "Error", error_message: "Error Optimizing: #{e.message}")
-    #         results << { fallbackImage: token["image"], mint: token["mint"], error: "Error Optimizating Image" }
-    #       end
-    #     end
-    #   end
-
-    #   results
-    # end
     def self.upload_batch(tokens, socket_id)
       puts "WEBSOCKET ID: #{socket_id}"
       results = []
       later = []
       tokens.each do |token|
+        puts "Optimizing: #{token}"
         # skip if no mint
         next unless token.key?('mint') && token['mint'].present?
 
@@ -139,6 +108,8 @@
         response
       rescue => e
         if e.message.include?("File size too large")
+
+          # when enabling async jobs remember to remove the later array/loop from upload_batch
           # puts "Queueing Scale Down Job: #{mint}"
           # OptimizeImageJob.perform_later(image_url, mint, socket_id)
 
@@ -155,7 +126,7 @@
         puts "Image too large, Scaling Down: #{mint}"
         image_file = download_image(image_url)
         scale_image(image_file)
-        puts "resized"
+
         cldResult = Cloudinary::Uploader.upload(image_file.path, resource_type: "auto", public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{mint}", overwrite: true)
         image_file.close
         image_file.unlink # delete the temporary file
@@ -189,6 +160,8 @@
     end
 
     def scale_image(image_file)
+      max_size = MAX_FILE_SIZE * 0.75
+
       image = MiniMagick::Image.open(image_file.path)
       
       scaleSize = 2000
@@ -198,6 +171,11 @@
       end
 
       image.resize("#{scaleSize}x")
+
+      if image.size > max_size
+        image.resize("#{scaleSize * 0.75}x")
+      end
+
       image.write(image_file.path)
     end
   end
