@@ -17,10 +17,10 @@
 default: &default
   adapter: postgresql
   encoding: unicode
-  pool: 24
+  # pool: 40
   # For details on connection pooling, see Rails configuration guide
   # https://guides.rubyonrails.org/configuring.html#database-pooling
-  # pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 30 } %>
 
 development:
   <<: *default
@@ -43,5 +43,5 @@ production:
   database: <%= ENV.fetch("DB_DATABASE") %>
   port: <%= ENV.fetch("DB_PORT") %>
   sslmode: require
-  pool: 24
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 30 } %>
   checkout_timeout: 30

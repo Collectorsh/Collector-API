@@ -39,9 +39,9 @@ class VisibilityController < ApplicationController
     user = User.where("public_keys LIKE '%#{params[:public_key]}%'").last
     return render json: { mints: [], default: true } if user.nil?
 
-
     userTokenMints = params[:mints] || []
     optimizations = OptimizedImage.where(mint_address: userTokenMints).index_by(&:mint_address)
+
     visibilities = user.mint_visibilities.index_by(&:mint_address)
 
     render json: { visibilities: visibilities, optimizations: optimizations, user_default: user.default_visibility }
