@@ -22,11 +22,9 @@
     end
 
     def self.upload_batch(tokens, socket_id)
-      puts "WEBSOCKET ID: #{socket_id}"
       results = []
       later = []
       tokens.each do |token|
-        puts "Optimizing: #{token}"
         # skip if no mint
         next unless token.key?('mint') && token['mint'].present?
 
