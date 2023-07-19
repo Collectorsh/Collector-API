@@ -88,6 +88,11 @@
 
       OptimizedImage.upsert_all(optimizedResults, unique_by: :mint_address) if optimizedResults.present?
 
+      ActionCable.server.broadcast("notifications_#{socket_id}", {
+        message: 'Resizing Images', 
+        data: { resizing: later.count }
+      })
+
       later.each do |token|
         cldResult = new(image_url: token["image"], mint: token["mint"], socket_id: socket_id).call_large_image
       end
