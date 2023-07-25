@@ -45,6 +45,10 @@ Rails.application.routes.draw do
     post '/follows', to: 'user#follows'
     post '/save_mints', to: 'user#save_mints'
     post '/mints', to: 'user#mints'
+    post '/update_bio', to: 'user#update_bio'
+    post '/update_profile_image', to: 'user#update_profile_image'
+    post '/update_banner_image', to: 'user#update_banner_image'
+    post '/update_socials', to: 'user#update_socials'
   end
 
   scope :following do

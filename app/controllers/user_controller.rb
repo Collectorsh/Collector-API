@@ -297,6 +297,43 @@ class UserController < ApplicationController
     render json: { status: 'success', mints: user.mints, collections: collections, listings: listings }
   end
 
+  def update_bio
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:bio, params[:bio])
+    render json: { status: 'success', user: user }
+  end
+  def update_profile_image
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:profile_image, params[:profile_image])
+    render json: { status: 'success', user: user }
+  end
+  def update_banner_image
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:banner_image, params[:banner_image])
+    render json: { status: 'success', user: user }
+  end
+  def update_socials
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+    
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:socials, params[:socials])
+    render json: { status: 'success', user: user }
+  end
+
   private
 
   def verify_signature(public_key, nonce)
@@ -317,4 +354,5 @@ class UserController < ApplicationController
     user_following = UserFollowing.where(user_id: user['id']).pluck(:following_id)
     User.select(:id, :username, :twitter_profile_image).where(id: user_following)
   end
+ 
 end
