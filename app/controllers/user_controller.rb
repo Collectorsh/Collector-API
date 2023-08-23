@@ -77,8 +77,7 @@ class UserController < ApplicationController
 
   def from_username
     unless (user = User.find_by("LOWER(username)= ?", params[:username].downcase))
-      return render json: { status: 'error',
-                            msg: 'Username not found' }
+      return render json: { status: 'error', msg: 'Username not found' }
     end
 
     render json: { status: 'success', user: user.attributes.except('api_key', 'nonce', 'twitter_oauth_secret',
@@ -332,6 +331,24 @@ class UserController < ApplicationController
 
     user.update_attribute(:socials, params[:socials])
     render json: { status: 'success', user: user }
+  end
+
+  def get_curator_by_username
+    unless (user = User.find_by("LOWER(username)= ?", params[:username].downcase))
+      return render json: { status: 'error', msg: 'Username not found' }
+    end
+
+    unless user.subscription_level == 'pro'
+      return render json: { status: 'error', msg: 'User is not a curator' }
+    end
+
+    user_hash = user.public_info
+    user_hash['curations'] = user.curations&.map(&:condensed)
+
+    render json: { status: 'success', curator: user_hash }
+  rescue StandardError => e
+    puts "error: #{e.message}"
+    render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
   private

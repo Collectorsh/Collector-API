@@ -49,6 +49,7 @@ Rails.application.routes.draw do
     post '/update_profile_image', to: 'user#update_profile_image'
     post '/update_banner_image', to: 'user#update_banner_image'
     post '/update_socials', to: 'user#update_socials'
+    post '/get_curator_by_username', to: 'user#get_curator_by_username'
   end
 
   scope :following do
@@ -157,6 +158,35 @@ Rails.application.routes.draw do
     post '/add_user', to: 'hub#add_user'
     post '/remove_user', to: 'hub#remove_user'
     post '/from_username', to: 'hub#from_username'
+  end
+
+  scope :curation do
+    post '/create', to: 'curation#create'
+    post '/get_by_name', to: 'curation#get_by_name'
+    post '/get_private_content', to: 'curation#get_private_content'
+    post '/publish_content', to: 'curation#publish_content'
+    post '/unpublish_content', to: 'curation#unpublish_content'
+    post '/save_draft_content', to: 'curation#save_draft_content'
+    post '/update_approved_artists', to: 'curation#update_approved_artists'
+    post '/update_name', to: 'curation#update_name'
+    post '/check_name_availability', to: 'curation#check_name_availability'
+    post '/get_by_approved_artist', to: 'curation#get_by_approved_artist'
+    get '/get_highlighted_curations', to: 'curation#get_highlighted_curations'
+  end
+
+  scope :curation_listing do
+    post '/submit_token', to: 'curation_listing#submit_token'
+    post '/update_listing', to: 'curation_listing#update_listing'
+    post '/cancel_listing', to: 'curation_listing#cancel_listing'
+  end
+
+  scope :sales_history do
+    post '/record_sale', to: 'sales_history#record_sale'
+  end
+
+  scope :key_hash do
+    post '/upload', to: 'key_hash#upload'
+    post '/get_hash', to: 'key_hash#get_hash'
   end
 
   get '/auth/:provider/callback', to: "sessions#create"
