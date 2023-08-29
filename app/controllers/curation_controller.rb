@@ -2,12 +2,12 @@ class CurationController < ApplicationController
   before_action :get_authorized_curation, except: [:check_name_availability, :create, :get_by_name, :get_by_approved_artist, :get_highlighted_curations]
 
   def create
-    puts "Creating curation"
     return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
-
+    
     user = User.find_by_api_key(params[:api_key])
     return render json: { status: 'error', msg: 'Api key not valid' } unless user 
     return render json: { status: 'error', msg: 'Only approved curators can create a Curation' } unless user.subscription_level === "pro"
+    puts "Creating curation: #{params[:name]}"
 
     # round fee to second decimal place
     curator_fee = params[:curator_fee].to_f.round(2) 
@@ -18,7 +18,6 @@ class CurationController < ApplicationController
       curator_fee: curator_fee,
       auction_house_address: params[:auction_house_address],
       private_key_hash: params[:private_key_hash],
-      hydra_name: params[:hydra_name],
       payout_address: params[:payout_address]
     )
 
@@ -53,7 +52,9 @@ class CurationController < ApplicationController
     return render json: { status: 'error', msg: 'Artist id not sent' } unless params[:artist_id].present?
 
     artist_id = params[:artist_id].to_i
-    curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id).map(&:condensed_with_curator)
+    curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id)
+      .order('created_at DESC')
+      .map(&:condensed_with_curator)
 
     render json: curations
   end

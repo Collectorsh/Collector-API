@@ -15,6 +15,8 @@ class CreateSalesHistory < ActiveRecord::Migration[6.1]
       t.references :seller, foreign_key: { to_table: :users }
       t.string :artist_address, null: false
       t.references :artist, foreign_key: { to_table: :users }
+      t.boolean :is_edition, default: false
+      t.string :image
 
       t.timestamps
     end

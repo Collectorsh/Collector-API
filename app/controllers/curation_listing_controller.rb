@@ -2,12 +2,14 @@ class CurationListingController < ApplicationController
   before_action :get_authorized_user, only: [:submit_token]
   before_action :token_from_confirmed_owner, only: [:update_listing, :cancel_listing]
 
-  def submit_token
+  def submit_single_token
     user = @authorized_user
 
     token_mint = params[:token_mint]
 
-    puts "token_mint: #{token_mint}"
+    return render json: { status: 'error', msg: 'Wrong route for edition tokens' } unless !params[:is_edition]
+
+    puts "submitting token_mint: #{token_mint}"
     return render json: { status: 'error', msg: 'Token mint not sent' } unless token_mint
 
     curation = Curation.find_by(id: params[:curation_id])
@@ -37,6 +39,8 @@ class CurationListingController < ApplicationController
       image: params[:image],
       description: params[:description],
       is_primary_sale: params[:is_primary_sale],
+      is_edition: params[:is_edition],
+      creators: params[:creators],
     })
 
     if listing.errors.any?

@@ -40,7 +40,8 @@ class VisibilityController < ApplicationController
     return render json: { mints: [], default: true } if user.nil?
 
     userTokenMints = params[:mints] || []
-    optimizations = OptimizedImage.where(mint_address: userTokenMints).index_by(&:mint_address)
+    userCldIds = params[:cld_ids] || []
+    optimizations = OptimizedImage.where(cld_id: userCldIds).index_by(&:cld_id)
 
     visibilities = user.mint_visibilities.index_by(&:mint_address)
 

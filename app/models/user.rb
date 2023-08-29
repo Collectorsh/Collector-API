@@ -16,7 +16,7 @@ class User < ApplicationRecord
   has_many :artist_names, through: :followings
   has_many :mints
   has_one :hub
-  has_many :curations, foreign_key: 'curator_id'
+  has_many :curations, -> { order('created_at DESC') }, foreign_key: 'curator_id'
   has_many :listed_tokens
 
   serialize :public_keys, Array
