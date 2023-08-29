@@ -1,58 +1,48 @@
 class CurationListingController < ApplicationController
-  before_action :get_authorized_user, only: [:submit_token]
+  before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens]
   before_action :token_from_confirmed_owner, only: [:update_listing, :cancel_listing]
 
-  def submit_single_token
+  def submit_tokens
     user = @authorized_user
 
-    token_mint = params[:token_mint]
+    tokens = params[:tokens]
 
-    return render json: { status: 'error', msg: 'Wrong route for edition tokens' } unless !params[:is_edition]
+    puts "Submitting #{tokens.count} tokens"
+    return render json: { status: 'error', msg: 'Tokens not sent' } unless !tokens.blank?
 
-    puts "submitting token_mint: #{token_mint}"
-    return render json: { status: 'error', msg: 'Token mint not sent' } unless token_mint
+    successfull_listings = []
 
-    curation = Curation.find_by(id: params[:curation_id])
-    return render json: { status: 'error', msg: 'Curation not found' } unless curation
+    tokens.each do |token| 
+      owner_id = params[:owner_id] || User.find_by("public_keys LIKE ?", "%#{params[:owner_address]}%")&.id
+      artist_id = params[:artist_id] || User.find_by("public_keys LIKE ?", "%#{params[:artist_address]}%")&.id
+  
+      listing = CurationListing.create({
+        curation_id: params[:curation_id],
+        owner_id: owner_id,
+        artist_id: artist_id,
+        mint: token['mint'],
+        name: token['name'],
+        owner_address: token['owner'],
+        artist_address: token['creator'],
+        aspect_ratio: token['aspect_ratio'], # aspectRatio added in the submitArtModal on the FE
+        animation_url: token['animation_url'],
+        image: token['image'],
+        description: token['description'],
+        is_primary_sale: !token['primary_sale_happened'],
+        is_edition: token['is_edition'],
+        creators: token['creators'],
+      })
 
-    required_params = [
-      params[:name], 
-      params[:aspect_ratio], 
-      params[:artist_address], 
-      params[:owner_address], 
-    ]
-    return render json: { status: 'error', msg: 'Missing required params to create a new listed token' } unless required_params.none?(&:blank?)
-
-    owner_id = params[:owner_id] || User.find_by("public_keys LIKE ?", "%#{params[:owner_address]}%")&.id
-    artist_id = params[:artist_id] || User.find_by("public_keys LIKE ?", "%#{params[:artist_address]}%")&.id
-
-    listing = CurationListing.create({
-      mint: token_mint,
-      curation_id: params[:curation_id],
-      name: params[:name],
-      owner_id: owner_id,
-      owner_address: params[:owner_address],
-      artist_id: artist_id,
-      artist_address: params[:artist_address],
-      aspect_ratio: params[:aspect_ratio],
-      animation_url: params[:animation_url],
-      image: params[:image],
-      description: params[:description],
-      is_primary_sale: params[:is_primary_sale],
-      is_edition: params[:is_edition],
-      creators: params[:creators],
-    })
-
-    if listing.errors.any?
-      puts "Failed to save listing: #{listing.errors.full_messages.join(", ")}"
-      return render json: { status: 'error', msg: "Failed to save token submission" }, status: :unprocessable_entity
-    else
-      curation.submitted_token_mints ||= []
-      curation.submitted_token_mints << listing.mint
-      curation.save
-
-      return render json: { status: 'success', msg: 'Token submitted', listing: listing }
+      if listing.errors.any?
+        puts "Failed to save listing for #{token['mint']}: #{listing.errors.full_messages.join(", ")}"
+      else
+        successfull_listings << listing
+      end
+      
     end
+    
+    return render json: { status: 'success', msg: 'Tokens submitted', listings: successfull_listings }
+
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
@@ -67,9 +57,9 @@ class CurationListingController < ApplicationController
     return render json: { status: 'error', msg: 'Props not sent' } unless buy_now_price && listing_receipt
 
     if token.update(listed_status: "listed", buy_now_price: buy_now_price, listing_receipt: listing_receipt)
-      puts "ncuration ame: #{token.curation.name}"
+      puts "curation name: #{token.curation.name}"
       puts "token price: #{token.buy_now_price}"
-      sent_count = ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+      ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
         message: 'Listing Update', 
         data: { 
           mint: token.mint, 
@@ -78,7 +68,6 @@ class CurationListingController < ApplicationController
           listing_receipt: token.listing_receipt
         }
       })
-      puts "sent_count: #{sent_count}"
       return render json: { status: 'success', msg: 'Token listing updated' }
     else 
       puts "FAILED TO SAVE TOKEN: #{token.errors.full_messages.join(", ")}"

@@ -175,7 +175,7 @@ Rails.application.routes.draw do
   end
 
   scope :curation_listing do
-    post '/submit_single_token', to: 'curation_listing#submit_single_token'
+    post '/submit_tokens', to: 'curation_listing#submit_tokens'
     post '/update_listing', to: 'curation_listing#update_listing'
     post '/cancel_listing', to: 'curation_listing#cancel_listing'
   end
