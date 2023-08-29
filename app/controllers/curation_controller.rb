@@ -41,7 +41,7 @@ class CurationController < ApplicationController
     
     curation_hash["curator"] = curation.curator.public_info
     curation_hash["approved_artists"] = curation.approved_artists
-    curation_hash["submitted_token_listings"] = curation.submitted_token_listings
+    curation_hash["submitted_token_listings"] = curation.curation_listings
 
     render json: curation_hash
   rescue StandardError => e

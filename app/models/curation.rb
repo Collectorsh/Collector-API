@@ -1,5 +1,6 @@
 class Curation < ApplicationRecord
   belongs_to :curator, class_name: 'User', foreign_key: 'curator_id'
+  has_many :curation_listings
 
   validates :name, allow_nil: false, uniqueness: { case_sensitive: false }
   validates_format_of :name, with: /\A(?!.*[_-]{2})[a-zA-Z0-9_-]{2,31}\z/, message: "Name needs to be url friendly"
@@ -16,9 +17,9 @@ class Curation < ApplicationRecord
     User.where(id: approved_artist_ids).map(&:public_info)
   end
 
-  def submitted_token_listings
-    CurationListing.where(curation_id: self.id, mint: self.submitted_token_mints)
-  end
+  # def submitted_token_listings
+  #   CurationListing.where(curation_id: self.id, mint: self.submitted_token_mints)
+  # end
 
   def condensed
     content = self.is_published ? self.published_content : self.draft_content
@@ -45,7 +46,7 @@ class Curation < ApplicationRecord
 
     
     # Add the submitted tokens' attributes
-    result[:submitted_token_listings] = self.submitted_token_listings.map(&:attributes)
+    result[:submitted_token_listings] = self.curation_listings.map(&:attributes)
     
     result
   end
