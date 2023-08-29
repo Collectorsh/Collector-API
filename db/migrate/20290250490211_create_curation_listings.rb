@@ -16,6 +16,8 @@ class CreateCurationListings < ActiveRecord::Migration[6.1]
       t.string :description
       t.string :listing_receipt
       t.boolean :is_primary_sale, default: false
+      t.boolean :is_edition, default: false
+      t.json :creators
 
       t.timestamps
     end

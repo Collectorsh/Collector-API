@@ -12,7 +12,7 @@ class CreateCurations < ActiveRecord::Migration[6.1]
       t.numeric :curator_fee, null: false 
       t.string :auction_house_address, null: false
       t.string :private_key_hash, null: false
-      t.string :hydra_name, null: false
+      # t.string :hydra_name, null: false
       t.string :payout_address, null: false
 
       t.timestamps

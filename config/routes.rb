@@ -94,7 +94,7 @@ Rails.application.routes.draw do
     post '/upload', to: 'images#upload'
     post '/upload_with_mints', to: 'images#upload_with_mints'
     post '/upload_with_tokens', to: 'images#upload_with_tokens'
-    post '/upload_single_mint', to: 'images#upload_single_mint'
+    post '/upload_single_token', to: 'images#upload_single_token'
   end
 
   scope :listing do
@@ -175,7 +175,7 @@ Rails.application.routes.draw do
   end
 
   scope :curation_listing do
-    post '/submit_token', to: 'curation_listing#submit_token'
+    post '/submit_single_token', to: 'curation_listing#submit_single_token'
     post '/update_listing', to: 'curation_listing#update_listing'
     post '/cancel_listing', to: 'curation_listing#cancel_listing'
   end
