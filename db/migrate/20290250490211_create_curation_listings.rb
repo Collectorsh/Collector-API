@@ -15,8 +15,13 @@ class CreateCurationListings < ActiveRecord::Migration[6.1]
       t.string :image
       t.string :description
       t.string :listing_receipt
-      t.boolean :is_primary_sale, default: false
+      t.boolean :primary_sale_happened
       t.boolean :is_edition, default: false
+      t.string :parent 
+      t.boolean :is_master_edition, default: false
+      t.integer :supply
+      t.integer :max_supply
+      t.string :master_edition_market_address
       t.json :creators
 
       t.timestamps

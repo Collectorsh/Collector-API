@@ -5,7 +5,7 @@ class CurationListing < ApplicationRecord
 
   validates_uniqueness_of :mint, scope: :curation_id
 
-  def associated_curations
-    Curation.with_submitted_token_mint(self.mint)
-  end
+  # def associated_curations
+  #   Curation.with_submitted_token_mint(self.mint)
+  # end
 end

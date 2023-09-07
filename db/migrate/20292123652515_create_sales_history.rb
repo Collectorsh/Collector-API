@@ -5,7 +5,7 @@ class CreateSalesHistory < ActiveRecord::Migration[6.1]
       t.references :curation, foreign_key: true
       t.numeric :price, null: false
       t.boolean :is_primary_sale, default: false
-      t.string :sale_type, null: false
+      t.string :sale_type, null: false # "edition_mint", "buy_now", "auction-{type}"
       t.string :tx_hash, null: false, unique: true
       t.string :token_mint, null: false
       t.string :token_name
@@ -17,6 +17,7 @@ class CreateSalesHistory < ActiveRecord::Migration[6.1]
       t.references :artist, foreign_key: { to_table: :users }
       t.boolean :is_edition, default: false
       t.string :image
+      t.integer :editions_minted
 
       t.timestamps
     end
