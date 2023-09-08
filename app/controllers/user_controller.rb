@@ -351,6 +351,16 @@ class UserController < ApplicationController
     render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
+  def get_user_by_address
+    return render json: { status: 'error', msg: 'Address missing' } unless params[:address]
+
+    user = User.find_by("public_keys LIKE '%#{params[:address]}%'")
+    return render json: { status: 'error', msg: 'User not found' } unless user
+
+    render json: { status: 'success', user: user.public_info}
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
   private
 
   def verify_signature(public_key, nonce)
