@@ -45,7 +45,7 @@
 
         token.merge!({ cld_id: cld_id })
         
-        if token.key?('error') || !token.key?('image')
+        if token.key?('error') || !token["image"].present?
           ActionCable.server.broadcast("notifications_#{socket_id}", {
             message: 'Optimizing Error', 
             data: { cld_id: cld_id, error: "No Image Metadata Found: #{token['error']}" }

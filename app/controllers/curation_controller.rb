@@ -1,5 +1,5 @@
 class CurationController < ApplicationController
-  before_action :get_authorized_curation, except: [:check_name_availability, :create, :get_by_name, :get_by_approved_artist, :get_highlighted_curations]
+  before_action :get_authorized_curation, except: [:check_name_availability, :create, :get_by_name, :get_by_approved_artist, :get_highlighted_curations, :get_by_listing_mint]
 
   def create
     return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
@@ -57,6 +57,16 @@ class CurationController < ApplicationController
       .map(&:condensed_with_curator)
 
     render json: curations
+  end
+
+  def get_by_listing_mint
+    return render json: { status: 'error', msg: 'Mint not sent' } unless params[:mint].present?
+
+    curations = CurationListing.where(mint: params[:mint]).map(&:curation).map(&:condensed_with_curator)
+
+    render json: {status: 'success', curations: curations}
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
   def get_highlighted_curations

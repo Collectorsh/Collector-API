@@ -163,40 +163,6 @@ class ImagesController < ApplicationController
       optimized = OptimizedImage.where(cld_id: cld_id).first_or_create
       optimized.update(optimized: "Pending", error_message: nil)
 
-      # res = HTTParty.post("https://api.helius.xyz/v0/token-metadata?api-key=#{ENV['HELIUS_API_KEY']}",
-      #   body: {
-      #     mintAccounts: [token.mint],
-      #     includeOffChain: true
-      #   }.to_json,
-      #   headers: { 
-      #     'Content-Type' => 'application/json',
-      #   } 
-      # )
-
-      # if !res.success?
-      #   puts "Error Fetching Helius Metadata: #{res.message}"
-      #   return render json: { error: 'Error Fetching Metadata Image' }, status: :unprocessable_entity
-      # end
-
-      # helius_res = JSON.parse(res.body)
-
-      # image = helius_res.dig(0, 'offChainMetadata', 'metadata', 'image')
-
-      # if !image.present?
-      #   puts "No Image in Metadata: #{helius_res.dig(0, 'offChainMetadata', 'metadata')}"
-      #   optimized.update(optimized: "Error", error_message: "Error Fetching Metadata Image")
-      #   ActionCable.server.broadcast("notifications_#{socket_id}", {
-      #     message: 'Optimizing Error', 
-      #     data: { mint: mint, error: "Error Optimizating Image: Couldnt Fetch Metadata Image" }
-      #   })
-      #   return render json: { error: 'Error Fetching Metadata Image' }, status: :unprocessable_entity
-      # end
-
-      # mungedToken = {
-      #   'mint' => mint,
-      #   'image'=> image,
-      # }
-
       ImageUploadService.upload_batch([token], socket_id)
     
       render json: { completed: 1}, status: :ok
