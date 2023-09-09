@@ -173,6 +173,7 @@ Rails.application.routes.draw do
     post '/check_name_availability', to: 'curation#check_name_availability'
     post '/get_by_approved_artist', to: 'curation#get_by_approved_artist'
     get '/get_highlighted_curations', to: 'curation#get_highlighted_curations'
+    post '/get_by_listing_mint', to: 'curation#get_by_listing_mint'
   end
 
   scope :curation_listing do
