@@ -14,6 +14,7 @@ class SalesHistoryController < ApplicationController
     artist_id = listings[0].artist_id
     mint = listings[0].mint
     name = listings[0].name
+    image = listings[0].image
     is_master_edition = listings[0].is_master_edition
 
     buyer_address = params[:buyer_address]
@@ -91,6 +92,26 @@ class SalesHistoryController < ApplicationController
     else
       return render json: { status: 'success', msg: 'Token sale recorded' }
     end
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def get_by_range
+    records = SalesHistory
+      .includes(:buyer, :seller, :artist, curation: :curator)
+      .where("created_at >= ? AND created_at <= ?", params[:start_date], params[:end_date])
+
+    modified_records = records.map do |record|
+      {
+        **record.attributes.symbolize_keys,
+        buyer: record.buyer.public_info,
+        seller: record.seller.public_info,
+        artist: record.artist.public_info,
+        curation: record.curation.basic_info,
+      }
+    end
+
+    render json: modified_records
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end

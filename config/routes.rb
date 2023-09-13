@@ -184,6 +184,7 @@ Rails.application.routes.draw do
 
   scope :sales_history do
     post '/record_sale', to: 'sales_history#record_sale'
+    post '/get_by_range', to: 'sales_history#get_by_range'
   end
 
   scope :key_hash do
