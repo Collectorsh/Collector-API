@@ -30,6 +30,7 @@ class Curation < ApplicationRecord
 
     # Merge the description and banner_image to the top level
     condensed_attributes = self.attributes.merge(
+      description_delta: content['description_delta'],
       description: content['description'],
       banner_image: content['banner_image']
     )
