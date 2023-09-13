@@ -77,8 +77,7 @@ class UserController < ApplicationController
 
   def from_username
     unless (user = User.find_by("LOWER(username)= ?", params[:username].downcase))
-      return render json: { status: 'error',
-                            msg: 'Username not found' }
+      return render json: { status: 'error', msg: 'Username not found' }
     end
 
     render json: { status: 'success', user: user.attributes.except('api_key', 'nonce', 'twitter_oauth_secret',
@@ -297,6 +296,71 @@ class UserController < ApplicationController
     render json: { status: 'success', mints: user.mints, collections: collections, listings: listings }
   end
 
+  def update_bio
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:bio_delta, params[:bio_delta])
+    render json: { status: 'success', user: user }
+  end
+  def update_profile_image
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:profile_image, params[:profile_image])
+    render json: { status: 'success', user: user }
+  end
+  def update_banner_image
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:banner_image, params[:banner_image])
+    render json: { status: 'success', user: user }
+  end
+  def update_socials
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+    
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:socials, params[:socials])
+    render json: { status: 'success', user: user }
+  end
+
+  def get_curator_by_username
+    unless (user = User.find_by("LOWER(username)= ?", params[:username].downcase))
+      return render json: { status: 'error', msg: 'Username not found' }
+    end
+
+    unless user.subscription_level == 'pro'
+      return render json: { status: 'error', msg: 'User is not a curator' }
+    end
+
+    user_hash = user.public_info
+    user_hash['curations'] = user.curations&.map(&:condensed)
+
+    render json: { status: 'success', curator: user_hash }
+  rescue StandardError => e
+    puts "error: #{e.message}"
+    render json: { status: 'error', msg: 'An unknown error has occurred' }
+  end
+
+  def get_user_by_address
+    return render json: { status: 'error', msg: 'Address missing' } unless params[:address]
+
+    user = User.find_by("public_keys LIKE '%#{params[:address]}%'")
+    return render json: { status: 'error', msg: 'User not found' } unless user
+
+    render json: { status: 'success', user: user.public_info}
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
   private
 
   def verify_signature(public_key, nonce)
@@ -317,4 +381,5 @@ class UserController < ApplicationController
     user_following = UserFollowing.where(user_id: user['id']).pluck(:following_id)
     User.select(:id, :username, :twitter_profile_image).where(id: user_following)
   end
+ 
 end

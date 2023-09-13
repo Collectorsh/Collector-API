@@ -154,48 +154,16 @@ class ImagesController < ApplicationController
     end
   end
 
-  def upload_single_mint
-    mint = params[:mint]
+  def upload_single_token
+    token = params[:token]
     socket_id = params[:socket_id]
     begin
-      optimized = OptimizedImage.where(mint_address: mint).first_or_create
+      cld_id = ImageUploadService.get_token_cld_id(token)
+
+      optimized = OptimizedImage.where(cld_id: cld_id).first_or_create
       optimized.update(optimized: "Pending", error_message: nil)
 
-      res = HTTParty.post("https://api.helius.xyz/v0/token-metadata?api-key=#{ENV['HELIUS_API_KEY']}",
-        body: {
-          mintAccounts: [mint],
-          includeOffChain: true
-        }.to_json,
-        headers: { 
-          'Content-Type' => 'application/json',
-        } 
-      )
-
-      if !res.success?
-        puts "Error Fetching Helius Metadata: #{res.message}"
-        return render json: { error: 'Error Fetching Metadata Image' }, status: :unprocessable_entity
-      end
-
-      helius_res = JSON.parse(res.body)
-
-      image = helius_res.dig(0, 'offChainMetadata', 'metadata', 'image')
-
-      if !image.present?
-        puts "No Image in Metadata: #{helius_res.dig(0, 'offChainMetadata', 'metadata')}"
-        optimized.update(optimized: "Error", error_message: "Error Fetching Metadata Image")
-        ActionCable.server.broadcast("notifications_#{socket_id}", {
-          message: 'Optimizing Error', 
-          data: { mint: mint, error: "Error Optimizating Image: Couldnt Fetch Metadata Image" }
-        })
-        return render json: { error: 'Error Fetching Metadata Image' }, status: :unprocessable_entity
-      end
-
-      mungedToken = {
-        'mint' => mint,
-        'image'=> image,
-      }
-
-      ImageUploadService.upload_batch([mungedToken], socket_id)
+      ImageUploadService.upload_batch([token], socket_id)
     
       render json: { completed: 1}, status: :ok
     rescue => e
@@ -209,20 +177,19 @@ class ImagesController < ApplicationController
     socket_id = params[:socket_id]
 
     begin
-      mints = tokens.map { |token| token['mint'] }
-
-      puts "Uploading #{mints.count} images for #{socket_id}"
+      puts "Uploading #{tokens.count} images for #{socket_id}"
       # assign all mints to pending
-      pending = mints.map do |mint|
+      pending = tokens.map do |token|
         { 
-          mint_address: mint, 
+          cld_id: ImageUploadService.get_token_cld_id(token),
+          mint_address: token['mint'], #DEPRICATING, need to move all mint_address to cld_id first
           optimized: 'Pending', 
           error_message: nil, 
           created_at: Time.current,
           updated_at: Time.current
         }
       end
-      OptimizedImage.upsert_all(pending, unique_by: :mint_address)
+      OptimizedImage.upsert_all(pending, unique_by: :cld_id)
 
       puts"Finsihed upsert"
 
@@ -245,6 +212,5 @@ class ImagesController < ApplicationController
       render json: { error: 'Error Uploading to Cloudinary with tokens' }, status: :internal_server_error
     end
   end
-
 end
 
