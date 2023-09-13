@@ -302,7 +302,7 @@ class UserController < ApplicationController
     user = User.find_by_api_key(params[:api_key])
     return render json: { status: 'error', msg: 'Api key not valid' } unless user
 
-    user.update_attribute(:bio, params[:bio])
+    user.update_attribute(:bio_delta, params[:bio_delta])
     render json: { status: 'success', user: user }
   end
   def update_profile_image
