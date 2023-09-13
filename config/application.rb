@@ -39,8 +39,8 @@ module SolstaApi
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
-    config.sign_message = 'Please sign this message to log-in. '
-
+    config.sign_message = 'Welcome to Collector! Please sign this message to log-in. '
+    # config.sign_message = 'Welcome to Collector! Dive into a world where you can collect, curate, and discover beautiful art. By signing or approving this message, you confirm the ownership of this wallet address. This action is completely free and you will not be charged. '
     config.destination_address = 'RyvoTTxHVn48GaAA26d8TfBqZcrkVHN4Fyo2LsucTtV'
     config.monthly = 1000000000
     config.yearly = 8000000000
