@@ -35,6 +35,7 @@ class ApiKeyController < ApplicationController
     verify_key = RbNaCl::VerifyKey.new(decode_base58(public_key))
     signature = params[:signature]['data'].pack('c*')
     message = "#{Rails.configuration.sign_message}#{nonce}"
+    puts "messgae: #{message}"
     Rails.logger.debug message
     verify_key.verify(signature, message)
   rescue RbNaCl::BadSignatureError
