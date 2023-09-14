@@ -5,15 +5,19 @@ require_relative '../lib/btc'
 class ApiKeyController < ApplicationController
   def request_api_key
     nonce = SecureRandom.hex(4)
-
+    puts "nonce: #{nonce}"
     unless (user = User.where("public_keys LIKE '%#{params[:publicKey]}%'").first)
       user = User.create(public_keys: [params[:publicKey]])
     end
 
-    user.nonce = nonce
-    user.save!
+    puts "user: #{user.inspect}"
 
-    render json: { status: 'success', nonce: user.nonce }
+    if user.update(nonce: nonce)
+      render json: { status: 'success', nonce: nonce }
+    else
+      puts "error: #{user.errors.full_messages}"
+      render json: { status: 'error', msg: 'Error requesting key' }
+    end
   end
 
   def create_api_key
