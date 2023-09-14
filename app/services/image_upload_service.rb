@@ -86,7 +86,7 @@
       optimizedResults = results.map do |result|
         if result.key?(:imageId) 
           { 
-            cld_id: result['cld_id'], 
+            cld_id: result[:cld_id], 
             optimized: 'True', 
             error_message: nil, 
             created_at: Time.current,
@@ -94,7 +94,7 @@
           }
         else 
           { 
-            cld_id: result['cld_id'],
+            cld_id: result[:cld_id],
             optimized: 'Error', 
             error_message: result[:error] || "Error Optimizating Image", 
             created_at: Time.current,
