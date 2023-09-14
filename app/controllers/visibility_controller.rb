@@ -39,14 +39,13 @@ class VisibilityController < ApplicationController
     user = User.where("public_keys LIKE '%#{params[:public_key]}%'").last
     return render json: { mints: [], default: true } if user.nil?
 
-    userTokenMints = params[:mints] || []
+    # userTokenMints = params[:mints] || []
     userCldIds = params[:cld_ids] || []
     optimizations = OptimizedImage.where(cld_id: userCldIds).index_by(&:cld_id)
 
     visibilities = user.mint_visibilities.index_by(&:mint_address)
 
     render json: { visibilities: visibilities, optimizations: optimizations, user_default: user.default_visibility }
-
   rescue => e
     puts "error getting visibilities: #{e.message}"
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }

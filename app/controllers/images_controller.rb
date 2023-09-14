@@ -158,6 +158,8 @@ class ImagesController < ApplicationController
     token = params[:token]
     socket_id = params[:socket_id]
     begin
+      raise "No Token Mint or Image" unless token['mint'].present? && token['image'].present?
+
       cld_id = ImageUploadService.get_token_cld_id(token)
 
       optimized = OptimizedImage.where(cld_id: cld_id).first_or_create
@@ -172,17 +174,21 @@ class ImagesController < ApplicationController
     end
   end
           
-  def upload_with_tokens() 
+  def upload_with_tokens
     tokens = params[:tokens]
     socket_id = params[:socket_id]
 
     begin
-      puts "Uploading #{tokens.count} images for #{socket_id}"
+      valid_tokens = tokens.select do |token|
+        token[:mint].present? && token[:image].present?
+      end
+
+      puts "Uploading #{valid_tokens.count} images for #{socket_id}"
       # assign all mints to pending
-      pending = tokens.map do |token|
+      pending = valid_tokens.map do |token|
         { 
           cld_id: ImageUploadService.get_token_cld_id(token),
-          mint_address: token['mint'], #DEPRICATING, need to move all mint_address to cld_id first
+          # mint_address: token['mint'], #DEPRICATING, need to move all mint_address to cld_id first
           optimized: 'Pending', 
           error_message: nil, 
           created_at: Time.current,
@@ -194,7 +200,7 @@ class ImagesController < ApplicationController
       puts"Finsihed upsert"
 
       batch_size = 8
-      batches = tokens.each_slice(batch_size).to_a
+      batches = valid_tokens.each_slice(batch_size).to_a
 
       threads = batches.map do |batch|
         Thread.new do
