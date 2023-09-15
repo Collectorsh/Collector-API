@@ -71,7 +71,7 @@ class CurationController < ApplicationController
 
   def get_highlighted_curations
     highlighted = ENV['HIGHLIGHTED_CURATIONS'].split(',')
-    curations = Curation.where(name: highlighted).map(&:condensed_with_curator)
+    curations = Curation.where(name: highlighted, is_published: true).map(&:condensed_with_curator)
 
     render json: curations
   rescue StandardError => e

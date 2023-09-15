@@ -8,6 +8,27 @@ class ImagesController < ApplicationController
     end
   end
 
+  def upload_image_buffer
+    image_buffer = params[:image_buffer]
+    cld_id = params[:cld_id]
+
+    unless image_buffer && cld_id
+      return render json: { error: 'Missing required parameters' }, status: :bad_request
+    end
+
+    buffer = Base64.decode64(image_buffer)
+
+    result = Cloudinary::Uploader.upload(buffer, 
+      resource_type: 'auto',
+      public_id: cld_id,
+      overwrite: true
+    )
+    render json: { public_id: result['public_id'] }, status: :ok
+  rescue => e
+    puts "Error uploading image: #{e.message}"
+    render json: { error: e.message }, status: :internal_server_error
+  end
+
   #DEPRICATING
   def upload_with_mints
     mints = params[:mints]
