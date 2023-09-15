@@ -23,6 +23,11 @@ class User < ApplicationRecord
   serialize :allowed_users, Array
 
   validates :username, allow_nil: true, uniqueness: { case_sensitive: false }
+  validates_format_of :username, 
+                    with: /\A(?!.*[_-]{2})[a-zA-Z0-9_-]{2,31}\z/, 
+                    message: "Name needs to be url friendly", 
+                    allow_nil: true, 
+                    if: :new_record?
 
   def public_info
     attributes.except("api_key", "nonce", "twitter_oauth_secret", "twitter_oauth_token")
