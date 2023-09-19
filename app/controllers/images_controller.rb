@@ -16,6 +16,10 @@ class ImagesController < ApplicationController
       return render json: { error: 'Missing required parameters' }, status: :bad_request
     end
 
+    unless image_buffer.is_a?(String)
+      return render json: { error: 'image_buffer must be a Base64 encoded string' }, status: :bad_request
+    end
+
     buffer = Base64.decode64(image_buffer)
 
     result = Cloudinary::Uploader.upload(buffer, 

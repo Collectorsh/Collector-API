@@ -48,7 +48,6 @@ class SalesHistoryController < ApplicationController
       listings.each do |listing|
         if listing.update(
           listed_status: "sold", 
-          buy_now_price: nil, 
           owner_address: buyer_address, 
           owner_id: buyer_id,
           primary_sale_happened: true,
@@ -59,8 +58,10 @@ class SalesHistoryController < ApplicationController
             data: { 
               mint: listing.mint, 
               listed_status: listing.listed_status,
-              buy_now_price: listing.buy_now_price,
-              listing_receipt: listing.listing_receipt
+              listing_receipt: listing.listing_receipt,
+              owner_address: listing.owner_address,
+              owner_id: listing.owner_id,
+              primary_sale_happened: listing.primary_sale_happened
             }
           })
         else
