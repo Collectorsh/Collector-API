@@ -76,12 +76,15 @@ class UserController < ApplicationController
   end
 
   def from_username
-    unless (user = User.find_by("LOWER(username)= ?", params[:username].downcase))
-      return render json: { status: 'error', msg: 'Username not found' }
+    user = User.find_by("LOWER(username)= ?", params[:username].downcase)
+
+    if !user
+      user = User.find_by("public_keys LIKE '%#{params[:username]}%'")
     end
 
-    render json: { status: 'success', user: user.attributes.except('api_key', 'nonce', 'twitter_oauth_secret',
-                                                                   'twitter_oauth_token') }
+    return render json: { status: 'error', msg: 'Username not found' } unless user
+
+    render json: { status: 'success', user: user.public_info }
   rescue StandardError => e
     Rails.logger.error e.backtrace
     render json: { status: 'error', msg: 'An unknown error has occurred' }
