@@ -7,6 +7,7 @@ class SalesHistoryController < ApplicationController
     listings = CurationListing.where(mint: params[:token_mint])
 
     if listings.empty?
+      puts "Listing not found for mint: #{params[:token_mint]}"
       return render json: { status: 'error', msg: 'Listing not found' }
     end
     
