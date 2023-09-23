@@ -97,7 +97,7 @@ class CurationListingController < ApplicationController
     token = @authorized_listing
 
     if token.is_master_edition
-      status = "master-edition-closed"
+      status = token.supply >= token.max_supply ? "master-edition-closed" : "unlisted"
       if token.update(listed_status: status, primary_sale_happened: true, buy_now_price: nil)
         ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
           message: 'Listing Update', 
