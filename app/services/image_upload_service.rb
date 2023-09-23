@@ -56,7 +56,7 @@
             cldResult = new(image_url: token["image"], cld_id: cld_id, socket_id: socket_id).call
 
             if cldResult["public_id"].present?
-              puts "Uploaded: #{cld_id}"
+              # puts "Uploaded: #{cld_id}"
               ActionCable.server.broadcast("notifications_#{socket_id}", {
                 message: 'Image Optimized', 
                 data: { cld_id: cld_id, imageId: cldResult["public_id"] }
@@ -64,7 +64,7 @@
 
               results << { imageId: cldResult['public_id'], cld_id: cld_id }
             else 
-              puts "Saving large upload for last: #{cld_id}"
+              # puts "Saving large upload for last: #{cld_id}"
               ActionCable.server.broadcast("notifications_#{socket_id}", {
                 message: 'Image Queued', 
                 data: { cld_id: cld_id, imageId: nil }
@@ -114,7 +114,7 @@
         cldResult = new(image_url: token["image"], cld_id: token['cld_id'], socket_id: socket_id).call_large_image
       end
 
-      puts "Done Uploading #{results.count} Images, #{later.count} Resized"
+      # puts "Done Uploading #{results.count} Images, #{later.count} Resized"
 
       results
     end
@@ -143,7 +143,7 @@
     def upload_large_image
       
       begin
-        puts "Image too large, Scaling Down: #{cld_id}"
+        # puts "Image too large, Scaling Down: #{cld_id}"
         image_file = download_image(image_url)
         scale_image(image_file)
 
@@ -158,7 +158,7 @@
 
         optimized = OptimizedImage.where(cld_id: cld_id).first_or_create
         optimized.update(optimized: "True", error_message: nil)
-        puts "Uploaded Large: #{cld_id}"
+        # puts "Uploaded Large: #{cld_id}"
       rescue => e
         puts "Error uploading large image: #{e.message}"
         ActionCable.server.broadcast("notifications_#{socket_id}", {
