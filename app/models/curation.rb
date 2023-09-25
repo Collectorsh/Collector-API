@@ -45,6 +45,13 @@ class Curation < ApplicationRecord
     result = condensed
     
     # Merge the curator's public info
+    result.merge(curator: self.curator.public_info)
+  end
+
+  def condensed_with_curator_and_listings
+    result = condensed
+    
+    # Merge the curator's public info
     result = result.merge(curator: self.curator.public_info)
 
     
