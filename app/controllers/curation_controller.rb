@@ -54,7 +54,7 @@ class CurationController < ApplicationController
     artist_id = params[:artist_id].to_i
     curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id)
       .order('created_at DESC')
-      .map(&:condensed_with_curator)
+      .map(&:condensed_with_curator_and_listings)
 
     render json: curations
   end
@@ -62,6 +62,7 @@ class CurationController < ApplicationController
   def get_by_listing_mint
     return render json: { status: 'error', msg: 'Mint not sent' } unless params[:mint].present?
 
+    #TODO looking to the effeciency here
     curations = CurationListing.where(mint: params[:mint]).map(&:curation).map(&:condensed_with_curator)
 
     render json: {status: 'success', curations: curations}
@@ -70,9 +71,8 @@ class CurationController < ApplicationController
   end
 
   def get_highlighted_curations
-    highlighted = ENV['HIGHLIGHTED_CURATIONS'].split(',')
-    curations = Curation.where(name: highlighted, is_published: true).map(&:condensed_with_curator)
-
+    highlight = CurationHighlight.find_by(name: "homepage")
+    curations = highlight.fetch_curations
     render json: curations
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
