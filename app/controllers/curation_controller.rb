@@ -63,7 +63,10 @@ class CurationController < ApplicationController
     return render json: { status: 'error', msg: 'Mint not sent' } unless params[:mint].present?
 
     #TODO looking to the effeciency here
-    curations = CurationListing.where(mint: params[:mint]).map(&:curation).map(&:condensed_with_curator)
+    # curations = CurationListing.where(mint: params[:mint]).map(&:curation).map(&:condensed_with_curator)
+    curations = CurationListing.includes(:curation)
+                           .where(mint: params[:mint])
+                           .map { |listing| listing.curation.condensed_with_curator_and_listings }
 
     render json: {status: 'success', curations: curations}
   rescue StandardError => e
