@@ -51,6 +51,7 @@ Rails.application.routes.draw do
     post '/update_socials', to: 'user#update_socials'
     post '/get_curator_by_username', to: 'user#get_curator_by_username'
     post '/get_user_by_address', to: 'user#get_user_by_address'
+    post 'verify', to: 'user#verify'
   end
 
   scope :following do
