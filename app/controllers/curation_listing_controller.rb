@@ -38,6 +38,7 @@ class CurationListingController < ApplicationController
         supply: token['supply'],
         parent: token['parent'],
         max_supply: token['max_supply'],
+        files: token['files']
       })
 
       if listing.errors.any?
