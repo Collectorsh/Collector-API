@@ -23,6 +23,7 @@ class CreateCurationListings < ActiveRecord::Migration[6.1]
       t.integer :max_supply
       t.string :master_edition_market_address
       t.json :creators
+      t.json :files
 
       t.timestamps
     end

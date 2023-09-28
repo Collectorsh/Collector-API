@@ -384,5 +384,13 @@ class UserController < ApplicationController
     user_following = UserFollowing.where(user_id: user['id']).pluck(:following_id)
     User.select(:id, :username, :twitter_profile_image).where(id: user_following)
   end
+
+  def verify
+    return render json: { status: 'error', msg: 'API Key missing' } unless params[:api_key]
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    return render json: {status: 'success', verified: true}
+  end
  
 end
