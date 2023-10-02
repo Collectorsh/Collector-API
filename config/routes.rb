@@ -194,6 +194,10 @@ Rails.application.routes.draw do
     post '/get_hash', to: 'key_hash#get_hash'
   end
 
+  scope :script do 
+    post '/upload_metadata', to: 'script#upload_metadata'
+  end
+
   get '/auth/:provider/callback', to: "sessions#create"
   post '/auth/create', to: "social#create"
   post '/auth/destroy', to: "social#destroy"
