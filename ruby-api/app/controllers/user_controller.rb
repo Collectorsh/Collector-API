@@ -27,6 +27,9 @@ class UserController < ApplicationController
     user['following'] = following.to_a
 
     render json: { status: 'success', user: user }
+  rescue StandardError => e
+    puts "error getting from api _key: #{e.message}"
+    render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
   def create_or_update_username

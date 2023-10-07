@@ -147,7 +147,12 @@
         image_file = download_image(image_url)
         scale_image(image_file)
 
-        cldResult = Cloudinary::Uploader.upload(image_file.path, resource_type: "auto", public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", overwrite: true)
+        cldResult = Cloudinary::Uploader.upload(
+          image_file.path, 
+          resource_type: "auto", 
+          public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", 
+          overwrite: true,
+        )
         image_file.close
         image_file.unlink # delete the temporary file
         

@@ -2,14 +2,12 @@ FROM ruby:3.0.2
 
 RUN apt-get update && apt-get install -y libsodium-dev libimlib2 libimlib2-dev
 
-RUN mkdir /collector-api
-WORKDIR /collector-api
-COPY . /collector-api
+RUN mkdir -p /collector-api/ruby-api
+WORKDIR /collector-api/ruby-api
+COPY /ruby-api /collector-api/ruby-api/
 
 RUN gem install bundler
 RUN bundle install
-
-# RUN gem install foreman
 
 ENV RAILS_ENV production
 
