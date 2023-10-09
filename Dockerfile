@@ -2,10 +2,10 @@
 FROM docker/compose:latest
 
 # Copy your project files into the image
-COPY . /collector-api
+COPY . /
 
 # Set the working directory
-WORKDIR /collector-api
+WORKDIR /
 
 # The command to run when the container starts
 CMD ["docker-compose", "up", "-d"]
