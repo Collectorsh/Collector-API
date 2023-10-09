@@ -8,4 +8,4 @@ COPY . /collector-api
 WORKDIR /collector-api
 
 # The command to run when the container starts
-CMD ["docker","compose", "up", "-d"]
+CMD ["docker-compose", "up", "-d"]
