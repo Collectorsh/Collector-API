@@ -3,6 +3,7 @@ FROM docker/compose:latest
 
 # Copy your project files into the image
 COPY . /
+COPY .env /.env
 
 # Set the working directory
 WORKDIR /

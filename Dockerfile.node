@@ -1,8 +1,5 @@
 FROM node:16
 
-# Install Yarn
-# RUN npm install -g yarn
-
 RUN mkdir -p /collector-api/node-api
 WORKDIR /collector-api/node-api
 
