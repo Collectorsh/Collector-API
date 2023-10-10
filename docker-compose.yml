@@ -24,7 +24,7 @@ services:
       - "3001:3001"
     # env_file:
     #   - ./.env
-      environment:
+    environment:
       - DB_HOST=${DB_HOST}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_USERNAME=${DB_USERNAME}
@@ -68,7 +68,6 @@ services:
       - CLOUDINARY_NFT_FOLDER=${CLOUDINARY_NFT_FOLDER}
       - CLOUDINARY_URL=${CLOUDINARY_URL}
       - SECRET_KEY=${SECRET_KEY}
-
     networks:
       - app-network
 networks:
