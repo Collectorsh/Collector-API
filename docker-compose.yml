@@ -1,5 +1,9 @@
 version: '3'
 services:
+  docker-compose-service:
+    image: docker/compose:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
   nginx:
     image: nginx:mainline-alpine
     container_name: nginx
