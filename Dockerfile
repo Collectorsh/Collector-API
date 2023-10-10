@@ -1,8 +1,6 @@
 # Use an image that has Docker and Docker Compose installed
 FROM docker/compose:latest
 
-RUN ls -l /
-
 # Copy your project files into the image
 COPY . /app
 
