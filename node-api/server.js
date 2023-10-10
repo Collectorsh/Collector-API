@@ -27,16 +27,16 @@ app.use(cors({
   origin: origin(),
 }))
 
-app.get('/node', (req, res) => {
+app.get('/', (req, res) => {
   res.send('Hello, World!');
 });
 
-app.post('/node/upload-metadata',
+app.post('/upload-metadata',
   uploadMiddleware.single('imageFile'),
   uploadMetadata
 )
 
-app.get('/node/health', (req, res) => { res.send("OK!")})
+app.get('/health', (req, res) => { res.send("OK!")})
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${ PORT }`);

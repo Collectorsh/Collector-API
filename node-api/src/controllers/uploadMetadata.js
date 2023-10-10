@@ -11,6 +11,8 @@ import postgres from "../../db/postgres.js";
 //Standard Ref = https://docs.metaplex.com/programs/token-metadata/changelog/v1.0
 
 export const uploadMetadata = async (req, res) => { 
+
+
   try {
     const imageFile = req.file
     console.log("🚀 ~ file: uploadMetadata.js:13 ~ uploadMetadata ~ imageFile:", imageFile)
@@ -27,7 +29,7 @@ export const uploadMetadata = async (req, res) => {
         contentType: imageFile.mimetype,
         extension
       });
-
+      
       const fundingHash = await postgres('key_hashes')
         .where("name", "curation_authority_funds")
         .first()
