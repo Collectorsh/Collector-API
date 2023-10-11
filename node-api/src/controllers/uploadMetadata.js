@@ -28,12 +28,13 @@ export const uploadMetadata = async (req, res) => {
       });
       
       const fundingHash = await postgres('key_hashes')
-        .where("name", "curation_authority_funds")
-        .first()
-        .catch((e) => { 
-          throw e; 
-        })
-
+      .where("name", "curation_authority_funds")
+      .first()
+      .catch((e) => { 
+        throw e; 
+      })
+      
+      console.log("🚀 ~ file: uploadMetadata.js:31 ~ fs.readFile ~ fundingHash:", fundingHash)
       const fundingPrivateKey = crypto.privateDecrypt(
         {
           key: formatRSAPrivateKey(process.env.RSA_PRIVATE_KEY),
@@ -44,6 +45,7 @@ export const uploadMetadata = async (req, res) => {
       )
 
       const fundingKeypair = Keypair.fromSecretKey(fundingPrivateKey)
+      console.log("🚀 ~ file: uploadMetadata.js:47 ~ fs.readFile ~ fundingKeypair:", fundingKeypair.publicKey.toString())
 
       const bundlrMetaplex = new Metaplex(connection)
         .use(keypairIdentity(fundingKeypair))
@@ -52,6 +54,7 @@ export const uploadMetadata = async (req, res) => {
       const bundlr = bundlrMetaplex.storage().driver()
 
       const imageUri = await bundlr.upload(imgMetaplexFile);
+      console.log("🚀 ~ file: uploadMetadata.js:57 ~ fs.readFile ~ imageUri:", imageUri)
       const imageUriWithExtension = imageUri + "?ext=" + extension.replace(".", "")
 
       const files = [{
