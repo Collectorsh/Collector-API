@@ -14,7 +14,6 @@ export const uploadMetadata = async (req, res) => {
   try {
     const imageFile = req.files.imageFile[0]
     const altMediaFile = req.files.altMediaFile?.[0]
-    console.log("🚀 ~ file: uploadMetadata.js:17 ~ uploadMetadata ~ altMediaFile:", altMediaFile)
 
     const nft = JSON.parse(req.body.nft)
     const { name, description, seller_fee_basis_points, attributes, creators, external_url, category } = nft
@@ -64,7 +63,7 @@ export const uploadMetadata = async (req, res) => {
 
       const filesToUpload = [imgMetaplexFile, altMetaplexFile].filter((f) => f)//filter out undefined
       const [imageUri, altUri] = await bundlr.uploadAll(filesToUpload);
-      console.log("🚀 ~ file: uploadMetadata.js:67 ~ handleUpload ~ altUri:", altUri)
+
 
       const imageUriWithExtension = imageUri + "?ext=" + imgExtension.replace(".", "")
 
