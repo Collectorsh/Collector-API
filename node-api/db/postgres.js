@@ -14,7 +14,6 @@ export function resolvePath(relativePath) {
 
 const postgres = Knex({
   client: "pg",
-  // connection: process.env.DATABASE_URL,
   connection: {
     ssl: {
       ca: fs.readFileSync(resolvePath('../ca-certificate.crt')).toString(),
@@ -26,7 +25,6 @@ const postgres = Knex({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE
   },
- 
 });
 
 export default postgres;
