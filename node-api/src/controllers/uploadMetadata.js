@@ -12,29 +12,38 @@ import postgres from "../../db/postgres.js";
 
 export const uploadMetadata = async (req, res) => { 
   try {
-    const imageFile = req.file
+    const imageFile = req.files.imageFile[0]
+    const altMediaFile = req.files.altMediaFile?.[0]
+
     const nft = JSON.parse(req.body.nft)
     const { name, description, seller_fee_basis_points, attributes, creators, external_url, category } = nft
 
-    fs.readFile(imageFile.path, async (err, data) => {
-      if (err) throw err;
-      const imageBuffer = data;
-
-      const extension = path.extname(imageFile.originalname)
+    const handleUpload = async (imageBuffer, altBuffer) => {
+      const imgExtension = path.extname(imageFile.originalname)
       const imgMetaplexFile = toMetaplexFile(imageBuffer, imageFile.originalname, {
-        displayName: name,
+        // displayName: name,
         contentType: imageFile.mimetype,
-        extension
+        extension: imgExtension
       });
       
-      const fundingHash = await postgres('key_hashes')
-      .where("name", "curation_authority_funds")
-      .first()
-      .catch((e) => { 
-        throw e; 
-      })
+      let altMetaplexFile, altExtension;
+      if (altMediaFile) {
+        altExtension = path.extname(altMediaFile.originalname)
+        altMetaplexFile = toMetaplexFile(altBuffer, altMediaFile.originalname, {
+          // displayName: name,
+          contentType: altMediaFile.mimetype,
+          extension: altExtension
+        });
+
+      }
       
-      console.log("🚀 ~ file: uploadMetadata.js:31 ~ fs.readFile ~ fundingHash:", fundingHash)
+      const fundingHash = await postgres('key_hashes')
+        .where("name", "curation_authority_funds")
+        .first()
+        .catch((e) => { 
+          throw e; 
+        })
+      
       const fundingPrivateKey = crypto.privateDecrypt(
         {
           key: formatRSAPrivateKey(process.env.RSA_PRIVATE_KEY),
@@ -45,7 +54,6 @@ export const uploadMetadata = async (req, res) => {
       )
 
       const fundingKeypair = Keypair.fromSecretKey(fundingPrivateKey)
-      console.log("🚀 ~ file: uploadMetadata.js:47 ~ fs.readFile ~ fundingKeypair:", fundingKeypair.publicKey.toString())
 
       const bundlrMetaplex = new Metaplex(connection)
         .use(keypairIdentity(fundingKeypair))
@@ -53,14 +61,27 @@ export const uploadMetadata = async (req, res) => {
 
       const bundlr = bundlrMetaplex.storage().driver()
 
-      const imageUri = await bundlr.upload(imgMetaplexFile);
-      console.log("🚀 ~ file: uploadMetadata.js:57 ~ fs.readFile ~ imageUri:", imageUri)
-      const imageUriWithExtension = imageUri + "?ext=" + extension.replace(".", "")
+      const filesToUpload = [imgMetaplexFile, altMetaplexFile].filter((f) => f)//filter out undefined
+      const [imageUri, altUri] = await bundlr.uploadAll(filesToUpload);
+
+
+      const imageUriWithExtension = imageUri + "?ext=" + imgExtension.replace(".", "")
 
       const files = [{
         type: imgMetaplexFile.contentType,
         uri: imageUriWithExtension
       }]
+
+      let altUriWithExtension = undefined
+      if (altUri) {
+        altUriWithExtension = altUri + "?ext=" + altExtension.replace(".", "")
+
+        //insert alt media first aas it will be primary, with the image being fallback
+        files.unshift({
+          type: altMetaplexFile.contentType,
+          uri: altUriWithExtension
+        })
+      }
 
       const { uri } = await bundlrMetaplex
         .nfts()
@@ -68,6 +89,7 @@ export const uploadMetadata = async (req, res) => {
           name,
           description,
           image: imageUriWithExtension,
+          animation_url: altUriWithExtension,
           seller_fee_basis_points,
           attributes,
           external_url,
@@ -79,9 +101,29 @@ export const uploadMetadata = async (req, res) => {
         });
 
       res.status(200).json({ uri })
-    })
-    
-    
+    }
+
+    if (!altMediaFile) {
+      fs.readFile(imageFile.path, async (err, data) => {
+        if (err) throw err;
+        const imageBuffer = data;
+
+        await handleUpload(imageBuffer)
+      })
+    } else {
+      fs.readFile(imageFile.path, async (err, imageData) => {
+        if (err) throw err;
+        const imageBuffer = imageData;
+
+        fs.readFile(altMediaFile.path, async (err, altData) => {
+          if (err) throw err;
+          const altBuffer = altData;
+
+          await handleUpload(imageBuffer, altBuffer)
+        })
+      })
+    }
+
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

@@ -32,7 +32,8 @@ app.get('/', (req, res) => {
 });
 
 app.post('/upload-metadata',
-  uploadMiddleware.single('imageFile'),
+  // uploadMiddleware.single('imageFile'),
+  uploadMiddleware.fields([{ name: 'imageFile', maxCount: 1 }, { name: 'altMediaFile', maxCount: 1 }]),
   uploadMetadata
 )
 
