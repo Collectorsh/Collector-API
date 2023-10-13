@@ -8,7 +8,7 @@ dotenv.config();
 
 const uploadMiddleware = multer({
   dest: 'uploads/',
-  limits: { fileSize: 110 * 1024 * 1024 }  // 110 MB
+  limits: { fileSize: 124 * 1024 * 1024 }  // 124 MB
 });
 
 const app = express();

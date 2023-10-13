@@ -21,7 +21,6 @@ export const uploadMetadata = async (req, res) => {
     const handleUpload = async (imageBuffer, altBuffer) => {
       const imgExtension = path.extname(imageFile.originalname)
       const imgMetaplexFile = toMetaplexFile(imageBuffer, imageFile.originalname, {
-        // displayName: name,
         contentType: imageFile.mimetype,
         extension: imgExtension
       });
@@ -30,11 +29,9 @@ export const uploadMetadata = async (req, res) => {
       if (altMediaFile) {
         altExtension = path.extname(altMediaFile.originalname)
         altMetaplexFile = toMetaplexFile(altBuffer, altMediaFile.originalname, {
-          // displayName: name,
           contentType: altMediaFile.mimetype,
           extension: altExtension
         });
-
       }
       
       const fundingHash = await postgres('key_hashes')
