@@ -17,6 +17,11 @@ const PORT = process.env.NODE_PORT || 3002;
 app.use(helmet());
 app.use(express.json());
 
+function setNoTimeout(req, res, next) {
+  req.setTimeout(0);  // Set no timeout
+  next();
+}
+
 const origin = () => {
   if (process.env.NODE_ENV === 'dev') {
     return 'http://localhost:3000';
@@ -32,7 +37,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/upload-metadata',
-  // uploadMiddleware.single('imageFile'),
+  setNoTimeout,
   uploadMiddleware.fields([{ name: 'imageFile', maxCount: 1 }, { name: 'altMediaFile', maxCount: 1 }]),
   uploadMetadata
 )
