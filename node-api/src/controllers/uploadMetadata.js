@@ -28,8 +28,12 @@ export const uploadMetadata = async (req, res) => {
       let altMetaplexFile, altExtension;
       if (altMediaFile) {
         altExtension = path.extname(altMediaFile.originalname)
+
+        const isGLB = altExtension === ".glb";
+        const mimetype = isGLB ? "model/gltf-binary" : altMediaFile.mimetype
+
         altMetaplexFile = toMetaplexFile(altBuffer, altMediaFile.originalname, {
-          contentType: altMediaFile.mimetype,
+          contentType: mimetype,
           extension: altExtension
         });
       }
