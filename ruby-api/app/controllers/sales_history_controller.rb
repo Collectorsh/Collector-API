@@ -44,6 +44,14 @@ class SalesHistoryController < ApplicationController
       else
         puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
       end
+
+      # update minted_indexer if found
+      minted_indexer = MintedIndexer.find_by(mint: mint)
+
+      if minted_indexer && !minted_indexer.update(supply: new_supply)
+        puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
+      end
+
     else
       # Go through all listings in case the token is listined in multiple curations
       listings.each do |listing|
@@ -67,6 +75,17 @@ class SalesHistoryController < ApplicationController
           })
         else
           puts "Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}"
+        end
+
+        # update minted_indexer if found
+        minted_indexer = MintedIndexer.find_by(mint: listing.mint)
+
+        if minted_indexer && !minted_indexer.update(
+          owner_address: buyer_address, 
+          owner_id: buyer_id,
+          primary_sale_happened: true,
+        )
+          puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
         end
       end
     end

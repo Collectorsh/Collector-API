@@ -113,6 +113,13 @@ class CurationListingController < ApplicationController
       else
         render json: { status: 'error', msg: 'Failed to cancel Master Edition listing' }, status: :unprocessable_entity
       end
+
+      #update minted_indexer if found (a master editions "primary sale" is finished as soon as the master edition is withdrawn /sale is closed)
+      minted_indexer = MintedIndexer.find_by(mint: token.mint)
+      if minted_indexer && !minted_indexer.update(primary_sale_happened: true)
+        puts "Failed to update minted_indexer for #{token.mintt}: #{minted_indexer.errors.full_messages.join(", ")}"
+      end
+      
     else
       return render json: { status: 'error', msg: 'Token already Sold' } unless token.listed_status != "sold"
       if token.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
