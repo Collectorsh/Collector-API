@@ -14,8 +14,8 @@ class CurationListingController < ApplicationController
 
     tokens.each do |token| 
 
-      owner_address = token['owner']
-      artist_address = token['creator']
+      owner_address = token['owner_address']
+      artist_address = token['artist_address']
       owner_id = params[:owner_id] || (owner_address.present? ? User.find_by("public_keys LIKE ?", "%#{owner_address}%")&.id : nil)
       artist_id = params[:artist_id] || (artist_address.present? ? User.find_by("public_keys LIKE ?", "%#{artist_address}%")&.id : nil)
   
@@ -113,6 +113,13 @@ class CurationListingController < ApplicationController
       else
         render json: { status: 'error', msg: 'Failed to cancel Master Edition listing' }, status: :unprocessable_entity
       end
+
+      #update minted_indexer if found (a master editions "primary sale" is finished as soon as the master edition is withdrawn /sale is closed)
+      minted_indexer = MintedIndexer.find_by(mint: token.mint)
+      if minted_indexer && !minted_indexer.update(primary_sale_happened: true)
+        puts "Failed to update minted_indexer for #{token.mintt}: #{minted_indexer.errors.full_messages.join(", ")}"
+      end
+
     else
       return render json: { status: 'error', msg: 'Token already Sold' } unless token.listed_status != "sold"
       if token.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)

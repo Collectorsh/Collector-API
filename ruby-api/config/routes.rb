@@ -194,10 +194,17 @@ Rails.application.routes.draw do
     post '/get_hash', to: 'key_hash#get_hash'
   end
 
+  scope :minted_indexer do
+    post '/create', to: 'minted_indexer#create'
+    post '/get_by_owner', to: 'minted_indexer#get_by_owner'
+    post '/get_by_mint', to: 'minted_indexer#get_by_mint'
+  end
+
   get '/auth/:provider/callback', to: "sessions#create"
   post '/auth/create', to: "social#create"
   post '/auth/destroy', to: "social#destroy"
   get '/twitter/profile_image', to: "twitter#profile_image"
+
 
   match '/rpc', to: "rpc#proxy", via: %w[get post]
 
