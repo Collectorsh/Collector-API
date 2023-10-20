@@ -7,7 +7,6 @@ class CreateMintedIndexer < ActiveRecord::Migration[6.1]
       t.string :owner_address, null: false
       t.integer :artist_id
       t.string :artist_address, null: false
-      t.numeric :aspect_ratio
       t.string :animation_url
       t.string :image
       t.string :description
@@ -17,9 +16,9 @@ class CreateMintedIndexer < ActiveRecord::Migration[6.1]
       t.boolean :is_master_edition, default: false
       t.integer :supply
       t.integer :max_supply
-      t.string :master_edition_market_address
       t.json :creators
       t.json :files
+      t.integer :royalties
 
       t.timestamps
     end
