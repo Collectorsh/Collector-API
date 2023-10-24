@@ -7,12 +7,8 @@ class Curation < ApplicationRecord
   validates :name, allow_nil: false, uniqueness: { case_sensitive: false }
   validates_format_of :name, with: /\A(?!.*[_-]{2})[a-zA-Z0-9_-]{2,31}\z/, message: "Name needs to be url friendly"
 
-  # scope :with_submitted_token_mint, ->(mint) {
-  #   where("? = ANY(submitted_token_mints)", mint)
-  # }
-
   def public_info
-    attributes.except('draft_content', 'private_key_hash')
+    attributes.except('draft_content', 'private_key_hash', 'viewer_passcode')
   end 
 
   def approved_artists
