@@ -167,6 +167,7 @@ Rails.application.routes.draw do
     post '/create', to: 'curation#create'
     post '/get_by_name', to: 'curation#get_by_name'
     post '/get_private_content', to: 'curation#get_private_content'
+    post '/get_viewer_private_content', to: 'curation#get_viewer_private_content'
     post '/publish_content', to: 'curation#publish_content'
     post '/unpublish_content', to: 'curation#unpublish_content'
     post '/save_draft_content', to: 'curation#save_draft_content'
@@ -176,6 +177,8 @@ Rails.application.routes.draw do
     post '/get_by_approved_artist', to: 'curation#get_by_approved_artist'
     get '/get_highlighted_curations', to: 'curation#get_highlighted_curations'
     post '/get_by_listing_mint', to: 'curation#get_by_listing_mint'
+    post '/generate_viewer_passcode', to: 'curation#generate_viewer_passcode'
+    post '/update_self_as_approved_artists', to: 'curation#update_self_as_approved_artists'
   end
 
   scope :curation_listing do
