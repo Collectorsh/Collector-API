@@ -32,7 +32,7 @@ class Curation < ApplicationRecord
     )
 
     # Remove draft_content and published_content attributes
-    condensed_attributes.except!('draft_content', 'published_content', 'private_key_hash')
+    condensed_attributes.except!('draft_content', 'published_content', 'private_key_hash', 'viewer_passcode')
 
     condensed_attributes
   end
@@ -54,6 +54,13 @@ class Curation < ApplicationRecord
     # Add the submitted tokens' attributes
     result[:submitted_token_listings] = self.curation_listings.map(&:attributes)
     
+    result
+  end
+
+  def condensed_with_curator_and_listings_and_passcode
+    result = condensed_with_curator_and_listings
+    # Add the viewer passcode
+    result[:viewer_passcode] = self.viewer_passcode
     result
   end
 

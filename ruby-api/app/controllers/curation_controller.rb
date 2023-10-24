@@ -55,7 +55,7 @@ class CurationController < ApplicationController
     artist_id = params[:artist_id].to_i
     curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id)
       .order('created_at DESC')
-      .map(&:condensed_with_curator_and_listings)
+      .map(&:condensed_with_curator_and_listings_and_passcode)
 
     render json: curations
   end
@@ -172,8 +172,12 @@ class CurationController < ApplicationController
 
     user = User.find_by_api_key(params[:api_key])
 
+    if curation.approved_artist_ids.include?(user.id)
+      return render json: { status: 'success', msg: 'User already approved' }
+    end
+
     if user.update(curator_approved: true)
-      # Add the user's ID to the approved_artist_ids array
+      # Add the user's ID to the approved_artist_ids array if not already there
       curation.approved_artist_ids << user.id
       unless curation.save
         return render json: { status: 'error', msg: curation.errors.full_messages.join(', ') }, status: :unprocessable_entity
@@ -182,7 +186,7 @@ class CurationController < ApplicationController
       return render json: { status: 'error', msg: user.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
 
-    render json: { status: 'success', msg: 'Artists Approved' }
+    render json: { status: 'success', curation: curation.condensed_with_curator_and_listings_and_passcode }
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
@@ -247,15 +251,13 @@ class CurationController < ApplicationController
   end
 
   def get_viewer_authorized_curation
-    unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
+    unless user = User.find_by_api_key(params[:api_key])
+      return render json: { status: 'error', msg: 'Not authorized' } unless authorized
+    end 
+
+    unless curation = Curation.find_by_viewer_passcode(params[:viewer_passcode])
       return render json: { error: "Curation not found" }, status: :not_found
     end
-
-    user = User.find_by_api_key(params[:api_key])
-
-    authorized = user && params[:viewer_passcode] && params[:viewer_passcode] == curation.viewer_passcode
-
-    return render json: { status: 'error', msg: 'Not authorized' } unless authorized
 
     @viewer_authorized_curation = curation
   end
