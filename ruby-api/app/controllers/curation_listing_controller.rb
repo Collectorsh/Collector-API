@@ -1,6 +1,6 @@
 class CurationListingController < ApplicationController
   before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens]
-  before_action :token_from_confirmed_owner, only: [:update_listing, :cancel_listing]
+  before_action :token_from_confirmed_owner, only: [:update_listing, :cancel_listing, :delete_submission]
 
   def submit_tokens
     user = @authorized_user
@@ -51,6 +51,22 @@ class CurationListingController < ApplicationController
     
     return render json: { status: 'success', msg: 'Tokens submitted', listings: successfull_listings }
 
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def delete_submission
+    token = @authorized_listing
+
+    unless token.listed_status != "listed"
+      return render json: { status: 'error', msg: 'Token is listed' }
+    end
+
+    if token.destroy
+      render json: { status: 'success', msg: 'Token submission deleted' }
+    else
+      render json: { status: 'error', msg: 'Failed to delete token submission' }, status: :unprocessable_entity
+    end
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end

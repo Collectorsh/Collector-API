@@ -13,6 +13,7 @@ class CreateCurations < ActiveRecord::Migration[6.1]
       t.string :auction_house_address, null: false
       t.string :private_key_hash, null: false
       t.string :payout_address, null: false
+      t.string :viewer_passcode
 
       t.timestamps
     end

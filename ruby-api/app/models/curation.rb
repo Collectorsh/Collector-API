@@ -7,12 +7,8 @@ class Curation < ApplicationRecord
   validates :name, allow_nil: false, uniqueness: { case_sensitive: false }
   validates_format_of :name, with: /\A(?!.*[_-]{2})[a-zA-Z0-9_-]{2,31}\z/, message: "Name needs to be url friendly"
 
-  # scope :with_submitted_token_mint, ->(mint) {
-  #   where("? = ANY(submitted_token_mints)", mint)
-  # }
-
   def public_info
-    attributes.except('draft_content', 'private_key_hash')
+    attributes.except('draft_content', 'private_key_hash', 'viewer_passcode')
   end 
 
   def approved_artists
@@ -36,7 +32,7 @@ class Curation < ApplicationRecord
     )
 
     # Remove draft_content and published_content attributes
-    condensed_attributes.except!('draft_content', 'published_content', 'private_key_hash')
+    condensed_attributes.except!('draft_content', 'published_content', 'private_key_hash', 'viewer_passcode')
 
     condensed_attributes
   end
@@ -58,6 +54,13 @@ class Curation < ApplicationRecord
     # Add the submitted tokens' attributes
     result[:submitted_token_listings] = self.curation_listings.map(&:attributes)
     
+    result
+  end
+
+  def condensed_with_curator_and_listings_and_passcode
+    result = condensed_with_curator_and_listings
+    # Add the viewer passcode
+    result[:viewer_passcode] = self.viewer_passcode
     result
   end
 

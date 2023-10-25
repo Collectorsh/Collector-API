@@ -1,5 +1,6 @@
 class CurationController < ApplicationController
-  before_action :get_authorized_curation, except: [:check_name_availability, :create, :get_by_name, :get_by_approved_artist, :get_highlighted_curations, :get_by_listing_mint]
+  before_action :get_authorized_curation, only: [:generate_viewer_passcode, :update_name, :update_approved_artists, :save_draft_content, :unpublish_content, :publish_content, :get_private_content]
+  before_action :get_viewer_authorized_curation, only: [:get_viewer_private_content, :update_self_as_approved_artists]
 
   def create
     return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
@@ -54,7 +55,7 @@ class CurationController < ApplicationController
     artist_id = params[:artist_id].to_i
     curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id)
       .order('created_at DESC')
-      .map(&:condensed_with_curator_and_listings)
+      .map(&:condensed_with_curator_and_listings_and_passcode)
 
     render json: curations
   end
@@ -87,7 +88,22 @@ class CurationController < ApplicationController
 
     render json: { 
       draft_content: curation.draft_content || init_content,
-      private_key_hash: curation.private_key_hash
+      private_key_hash: curation.private_key_hash,
+      viewer_passcode: curation.viewer_passcode
+    }
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def get_viewer_private_content
+    curation = @viewer_authorized_curation
+
+    init_content = {
+      modules: []
+    }
+
+    render json: { 
+      draft_content: curation.draft_content || init_content,
     }
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
@@ -151,6 +167,31 @@ class CurationController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def update_self_as_approved_artists
+    curation = @viewer_authorized_curation
+
+    user = User.find_by_api_key(params[:api_key])
+
+    if curation.approved_artist_ids.include?(user.id)
+      return render json: { status: 'success', msg: 'User already approved' }
+    end
+
+    if user.update(curator_approved: true)
+      # Add the user's ID to the approved_artist_ids array if not already there
+      curation.approved_artist_ids << user.id
+      unless curation.save
+        return render json: { status: 'error', msg: curation.errors.full_messages.join(', ') }, status: :unprocessable_entity
+      end
+    else
+      return render json: { status: 'error', msg: user.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+
+    render json: { status: 'success', curation: curation.condensed_with_curator_and_listings_and_passcode }
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+
   def update_name
     new_name = params[:new_name]&.strip
 
@@ -179,6 +220,21 @@ class CurationController < ApplicationController
     end
   end
 
+  def generate_viewer_passcode
+    curation = @authorized_curation
+    passcode = SecureRandom.hex(6)
+
+    puts "Generated passcode: #{passcode}"
+
+    if curation.update(viewer_passcode: passcode)
+      return render json: { status: 'success', passcode: passcode }
+    else
+      return render json: { status: 'error', msg: curation.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+  rescue StandardError => e
+    render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+  
   private 
 
   def get_authorized_curation
@@ -186,13 +242,24 @@ class CurationController < ApplicationController
       return render json: { error: "Curation not found" }, status: :not_found
     end
 
-    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
-
     user = User.find_by_api_key(params[:api_key])
     authorized = user && user.id == curation.curator_id
-
-    return render json: { status: 'error', msg: 'Api key not valid' } unless authorized
+    
+    return render json: { status: 'error', msg: 'Not authorized' } unless authorized
 
     @authorized_curation = curation
   end
+
+  def get_viewer_authorized_curation
+    unless user = User.find_by_api_key(params[:api_key])
+      return render json: { status: 'error', msg: 'Not authorized' } unless authorized
+    end 
+
+    unless curation = Curation.find_by_viewer_passcode(params[:viewer_passcode])
+      return render json: { error: "Curation not found" }, status: :not_found
+    end
+
+    @viewer_authorized_curation = curation
+  end
+
 end
