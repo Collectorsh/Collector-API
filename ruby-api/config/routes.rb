@@ -185,6 +185,7 @@ Rails.application.routes.draw do
     post '/submit_tokens', to: 'curation_listing#submit_tokens'
     post '/update_listing', to: 'curation_listing#update_listing'
     post '/cancel_listing', to: 'curation_listing#cancel_listing'
+    post '/delete_submission', to: 'curation_listing#delete_submission'
   end
 
   scope :sales_history do
