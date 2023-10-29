@@ -41,10 +41,28 @@ class CurationController < ApplicationController
     curation_hash = curation.public_info
     
     curation_hash["curator"] = curation.curator.public_info
+    # curation_hash["approved_artists"] = curation.approved_artists
+    # curation_hash["submitted_token_listings"] = curation.curation_listings
+
+    render json: curation_hash
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def get_listings_and_artists_by_name
+    unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
+      return render json: { error: "Curation not found" }, status: :not_found
+    end
+    
+    curation_hash = curation.public_info
+    
     curation_hash["approved_artists"] = curation.approved_artists
     curation_hash["submitted_token_listings"] = curation.curation_listings
 
-    render json: curation_hash
+    render json: {
+      submitted_token_listings: curation_hash["submitted_token_listings"],
+      approved_artists: curation_hash["approved_artists"]
+    }
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
