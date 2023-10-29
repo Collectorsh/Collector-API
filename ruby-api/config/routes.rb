@@ -166,6 +166,7 @@ Rails.application.routes.draw do
   scope :curation do
     post '/create', to: 'curation#create'
     post '/get_by_name', to: 'curation#get_by_name'
+    post '/get_listings_and_artists_by_name', to: 'curation#get_listings_and_artists_by_name'
     post '/get_private_content', to: 'curation#get_private_content'
     post '/get_viewer_private_content', to: 'curation#get_viewer_private_content'
     post '/publish_content', to: 'curation#publish_content'
