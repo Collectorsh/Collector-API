@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import { uploadMetadata } from './src/controllers/uploadMetadata.js';
+import { uploadCollectionMetadata } from './src/controllers/uploadCollectionMetadata.js';
 dotenv.config();
 
 const uploadMiddleware = multer({
@@ -40,6 +41,12 @@ app.post('/upload-metadata',
   setNoTimeout,
   uploadMiddleware.fields([{ name: 'imageFile', maxCount: 1 }, { name: 'altMediaFile', maxCount: 1 }]),
   uploadMetadata
+)
+
+app.post('/upload-collection-metadata',
+  setNoTimeout,
+  uploadMiddleware.fields([{ name: 'imageFile', maxCount: 1 }]),
+  uploadCollectionMetadata
 )
 
 app.get('/health', (req, res) => { res.send("OK!")})
