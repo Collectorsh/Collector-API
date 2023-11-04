@@ -77,13 +77,24 @@ class CurationController < ApplicationController
 
   def get_by_approved_artist
     return render json: { status: 'error', msg: 'Artist id not sent' } unless params[:artist_id].present?
-
     artist_id = params[:artist_id].to_i
-    curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id)
-      .order('created_at DESC')
-      .map(&:condensed_with_curator_and_listings_and_passcode)
+
+    # //By approved curation
+    # curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id)
+    #   .order('created_at DESC')
+    #   .map(&:condensed_with_curator_and_listings_and_passcode)
+
+
+    # //by submitted listing
+    curation_ids_subquery = CurationListing.where(artist_id: artist_id).select(:curation_id)
+    curations = Curation.where(id: curation_ids_subquery)
+                    .order('created_at DESC')
+                    .map(&:condensed_with_curator_and_listings_and_passcode)
+
 
     render json: curations
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
   def get_by_listing_mint
