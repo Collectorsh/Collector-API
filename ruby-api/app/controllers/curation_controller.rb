@@ -87,7 +87,11 @@ class CurationController < ApplicationController
 
     # //by submitted listing
     curation_ids_subquery = CurationListing.where(artist_id: artist_id).select(:curation_id)
+    # Condition to check for artist_id in approved_artist_ids array
+    approved_artist_condition = Curation.arel_table[:approved_artist_ids].contains([artist_id])
+
     curations = Curation.where(id: curation_ids_subquery)
+                    .or(Curation.where(approved_artist_condition))
                     .order('created_at DESC')
                     .map(&:condensed_with_curator_and_listings_and_passcode)
 
