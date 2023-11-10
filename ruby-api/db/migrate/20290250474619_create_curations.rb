@@ -9,11 +9,12 @@ class CreateCurations < ActiveRecord::Migration[6.1]
       t.json :published_content
       t.json :draft_content
       t.numeric :total_sales, default: 0
-      t.numeric :curator_fee, null: false 
       t.string :auction_house_address, null: false
-      t.string :private_key_hash, null: false
-      t.string :payout_address, null: false
-      t.string :viewer_passcode
+      t.numeric :curator_fee
+      t.string :private_key_hash
+      t.string :payout_address
+      t.string :viewer_passcode,
+      t.string :curation_type, null: false, default: 'curator'
 
       t.timestamps
     end

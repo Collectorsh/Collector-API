@@ -2,13 +2,14 @@ class CurationController < ApplicationController
   before_action :get_authorized_curation, only: [:generate_viewer_passcode, :update_name, :update_approved_artists, :save_draft_content, :unpublish_content, :publish_content, :get_private_content]
   before_action :get_viewer_authorized_curation, only: [:get_viewer_private_content, :update_self_as_approved_artists]
 
+  # defaults to type "curator"
   def create
     return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
     
     user = User.find_by_api_key(params[:api_key])
     return render json: { status: 'error', msg: 'Api key not valid' } unless user 
     return render json: { status: 'error', msg: 'Only approved curators can create a Curation' } unless user.subscription_level === "pro"
-    puts "Creating curation: #{params[:name]}"
+    puts "Creating curator curation: #{params[:name]}"
 
     # round fee to second decimal place
     curator_fee = params[:curator_fee].to_f.round(2) 
@@ -20,6 +21,38 @@ class CurationController < ApplicationController
       auction_house_address: params[:auction_house_address],
       private_key_hash: params[:private_key_hash],
       payout_address: params[:payout_address]
+    )
+
+    if curation.errors.any?
+      puts "Failed to save curation: #{listing.errors.full_messages.join(", ")}"
+      return render json: { status: 'error', msg: "Failed to save Curation" }, status: :unprocessable_entity
+    else
+      return render json: { status: 'success', msg: 'Curation created' }
+    end
+  rescue StandardError => e
+    puts "Failed to create curation: #{e.message}"
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  # type is "artist" || "collector"
+  def create_personal
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
+    
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user 
+    return render json: { status: 'error', msg: 'Only approved curators can create a Curation' } unless user.subscription_level === "pro"
+    return render json: { status: 'error', msg: 'Proper curation type not sent' } unless params[:curation_type].present? && ["artist", "collector"].include?(params[:curation_type])
+    puts "Creating personal curation: #{params[:name]}"
+
+    # round fee to second decimal place
+    curator_fee = params[:curator_fee].to_f.round(2) 
+
+    curation = Curation.create(
+      name: params[:name],
+      curator_id: user.id,
+      auction_house_address: params[:auction_house_address],
+      curation_type: params[:curation_type],
+      curator_fee: 0
     )
 
     if curation.errors.any?
