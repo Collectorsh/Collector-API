@@ -165,6 +165,7 @@ Rails.application.routes.draw do
 
   scope :curation do
     post '/create', to: 'curation#create'
+    post '/create_personal', to: 'curation#create_personal'
     post '/get_by_name', to: 'curation#get_by_name'
     post '/get_listings_and_artists_by_name', to: 'curation#get_listings_and_artists_by_name'
     post '/get_private_content', to: 'curation#get_private_content'
@@ -187,6 +188,7 @@ Rails.application.routes.draw do
     post '/update_listing', to: 'curation_listing#update_listing'
     post '/cancel_listing', to: 'curation_listing#cancel_listing'
     post '/delete_submission', to: 'curation_listing#delete_submission'
+    post '/delete_multiple_submissions', to: 'curation_listing#delete_multiple_submissions'
   end
 
   scope :sales_history do

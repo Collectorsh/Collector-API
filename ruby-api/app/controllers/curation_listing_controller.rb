@@ -1,5 +1,5 @@
 class CurationListingController < ApplicationController
-  before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens]
+  before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens, :delete_multiple_submissions]
   before_action :token_from_confirmed_owner, only: [:update_listing, :cancel_listing, :delete_submission]
 
   def submit_tokens
@@ -11,8 +11,22 @@ class CurationListingController < ApplicationController
     puts "Submitting #{tokens.count} tokens"
 
     successfull_listings = []
+    errors = []
 
     tokens.each do |token| 
+
+      is_master_edition = token['is_master_edition']
+
+      if is_master_edition
+        #check if master edition listing already exists and is listed
+        # if so reject submission
+        existing_listing = CurationListing.find_by(mint: token['mint'], listed_status: "listed")
+        if existing_listing 
+          puts "Master Edition already listed: #{existing_listing.mint}"
+          errors << {mint: existing_listing.mint, message: "Master Edition already listed: #{existing_listing.mint}"} 
+          next;
+        end
+      end
 
       owner_address = token['owner_address']
       artist_address = token['artist_address']
@@ -34,7 +48,7 @@ class CurationListingController < ApplicationController
         creators: token['creators'],
         primary_sale_happened: token['primary_sale_happened'],
         is_edition: token['is_edition'],
-        is_master_edition: token['is_master_edition'],
+        is_master_edition: is_master_edition,
         supply: token['supply'],
         parent: token['parent'],
         max_supply: token['max_supply'],
@@ -42,6 +56,7 @@ class CurationListingController < ApplicationController
       })
 
       if listing.errors.any?
+        errors << { mint: token['mint'], message: "Failed to submit: #{token['mint']}"}
         puts "Failed to save listing for #{token['mint']}: #{listing.errors.full_messages.join(", ")}"
       else
         successfull_listings << listing
@@ -49,7 +64,7 @@ class CurationListingController < ApplicationController
       
     end
     
-    return render json: { status: 'success', msg: 'Tokens submitted', listings: successfull_listings }
+    return render json: { status: 'success', listings: successfull_listings, errors: errors }
 
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
@@ -66,6 +81,32 @@ class CurationListingController < ApplicationController
       render json: { status: 'success', msg: 'Token submission deleted' }
     else
       render json: { status: 'error', msg: 'Failed to delete token submission' }, status: :unprocessable_entity
+    end
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def delete_multiple_submissions
+    user = @authorized_user;
+    token_mints = params[:token_mints]
+    curation_id = params[:curation_id]
+
+    if token_mints.blank? || !curation_id.present?
+      return render json: { status: 'error', msg: 'missing parameters' }, status: :unprocessable_entity
+    end
+
+    # get all tokens requested expect when they are already listed
+    tokens = CurationListing.where(
+      mint: token_mints, 
+      owner_id: user.id, 
+      curation_id: curation_id,
+    ).where.not(listed_status: 'listed')
+
+    if tokens.exists? 
+      tokens.destroy_all
+      render json: { status: 'success', msg: 'Token submissions deleted' }
+    else
+      render json: { status: 'error', msg: 'Failed to delete token submissions' }
     end
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
