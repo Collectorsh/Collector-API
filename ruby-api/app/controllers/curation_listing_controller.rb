@@ -87,6 +87,7 @@ class CurationListingController < ApplicationController
   end
 
   def delete_multiple_submissions
+
     user = @authorized_user;
     token_mints = params[:token_mints]
     curation_id = params[:curation_id]
@@ -103,7 +104,9 @@ class CurationListingController < ApplicationController
     ).where.not(listed_status: 'listed')
 
     if tokens.exists? 
+      
       tokens.destroy_all
+      
       render json: { status: 'success', msg: 'Token submissions deleted' }
     else
       render json: { status: 'error', msg: 'Failed to delete token submissions' }
