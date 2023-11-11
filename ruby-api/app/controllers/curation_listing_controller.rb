@@ -121,8 +121,8 @@ class CurationListingController < ApplicationController
     listing_receipt = params[:listing_receipt]
     master_edition_market_address = params[:master_edition_market_address]
 
-    required_props = listing_receipt || master_edition_market_address
-    return render json: { status: 'error', msg: 'Props not sent' } unless buy_now_price && required_props
+    has_required_props = token.is_master_edition ? master_edition_market_address.present? : listing_receipt.present?
+    return render json: { status: 'error', msg: 'Props not sent' } unless buy_now_price.present? && has_required_props
 
     if token.update(
       listed_status: "listed", 
@@ -130,8 +130,6 @@ class CurationListingController < ApplicationController
       listing_receipt: listing_receipt,
       master_edition_market_address: master_edition_market_address
     )
-      puts "curation name: #{token.curation.name}"
-      puts "token price: #{token.buy_now_price}"
       ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
         message: 'Listing Update', 
         data: { 
