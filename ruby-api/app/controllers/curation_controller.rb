@@ -88,7 +88,7 @@ class CurationController < ApplicationController
     
     listings = curation.curation_listings
     
-    artists = User.where(id: listings.map(&:artist_id))
+    artists = (User.where(id: listings.map(&:artist_id)).map(&:public_info) + curation.approved_artists).uniq
 
     render json: {
       submitted_token_listings: listings,
