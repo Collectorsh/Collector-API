@@ -118,9 +118,22 @@ class SalesHistoryController < ApplicationController
   end
 
   def get_by_range
+    artist_username = params[:artist_username]
+    buyer_username = params[:buyer_username]
+    curation_name = params[:curation_name]
+
+    artist = artist_username.present? ? User.find_by(username: artist_username) : nil
+    buyer = buyer_username.present? ? User.find_by(username: buyer_username) : nil
+    curation = curation_name.present? ? Curation.find_by(name: curation_name) : nil
+
     records = SalesHistory
       .includes(:buyer, :seller, :artist, curation: :curator)
       .where("created_at >= ? AND created_at <= ?", params[:start_date], params[:end_date])
+      .order(created_at: :desc)
+
+    records = records.where(artist_id: artist.id) if artist.present?
+    records = records.where(buyer_id: buyer.id) if buyer.present?
+    records = records.where(curation_id: curation.id) if curation.present?
 
     modified_records = records.map do |record|
       {

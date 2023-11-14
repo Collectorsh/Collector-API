@@ -308,6 +308,30 @@ class CurationController < ApplicationController
   rescue StandardError => e
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
+
+  def get_all_curator_curations_with_private_hash
+    user = User.find_by_api_key(params[:api_key])
+    adminIDs = [
+      720, #Nate (username: n8solomon)
+      5421, #Scott (username: EV3)
+    ]
+    authorized = user && adminIDs.include?(user.id)
+
+    return render json: { status: 'error', msg: 'Not authorized' } unless authorized
+
+    curations = Curation.includes(:curator).where(curation_type: "curator").order(:name)
+
+    curations = curations.map do |curation|
+      # Creating a new hash that combines the curation's attributes, excluding some, and adding the curator's public info
+      curation.attributes
+              .except('draft_content', 'published_content')
+              .merge(curator: curation.curator.public_info)
+    end
+
+    render json: curations
+  rescue StandardError => e
+    render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
   
   private 
 
