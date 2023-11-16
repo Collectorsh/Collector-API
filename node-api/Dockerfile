@@ -1,5 +1,7 @@
 FROM node:16
 
+ENV TZ=America/Los_Angeles
+
 # RUN mkdir -p /collector-api/node-api
 # WORKDIR /collector-api/node-api
 
