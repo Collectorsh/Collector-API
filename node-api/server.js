@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import { uploadMetadata } from './src/controllers/uploadMetadata.js';
 import { uploadCollectionMetadata } from './src/controllers/uploadCollectionMetadata.js';
+import { runBackfillJob } from './cron/backfill-job.js';
 dotenv.config();
 
 const uploadMiddleware = multer({
@@ -49,7 +50,9 @@ app.post('/upload-collection-metadata',
   uploadCollectionMetadata
 )
 
-app.get('/health', (req, res) => { res.send("OK!")})
+app.get('/health', (req, res) => { res.send("OK!") })
+
+runBackfillJob();
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${ PORT }`);
