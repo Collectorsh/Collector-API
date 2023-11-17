@@ -27,4 +27,5 @@ export const backfill = async () => {
 
   //same process with minted_indexer
   console.log("LOGGGING", new Date().toLocaleDateString())
+  console.log("L time", new Date().toLocaleTimeString())
 }
