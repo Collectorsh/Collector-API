@@ -52,7 +52,8 @@ class Curation < ApplicationRecord
 
     
     # Add the submitted tokens' attributes
-    result[:submitted_token_listings] = self.curation_listings.map(&:attributes)
+    # filter to exclude nft_state = "burned"
+    result[:submitted_token_listings] = self.curation_listings.map(&:attributes).select{|x| x["nft_state"] != "burned"}
     
     result
   end
