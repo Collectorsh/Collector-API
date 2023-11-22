@@ -24,6 +24,7 @@ class CreateCurationListings < ActiveRecord::Migration[6.1]
       t.string :master_edition_market_address
       t.json :creators
       t.json :files
+      t.string :nft_state
 
       t.timestamps
     end

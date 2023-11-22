@@ -85,25 +85,15 @@ class CurationController < ApplicationController
       return render json: { error: "Curation not found" }, status: :not_found
     end
     
+    #filter to exclude nft_state = "burned"
+    listings = curation.curation_listings.map(&:attributes).select{|x| x["nft_state"] != "burned"}
     
-    listings = curation.curation_listings
-    
-    artists = (User.where(id: listings.map(&:artist_id)).map(&:public_info) + curation.approved_artists).uniq
+    artists = (User.where(id: listings.map {|l| l["artist_id"]}).map(&:public_info) + curation.approved_artists).uniq
 
     render json: {
       submitted_token_listings: listings,
       approved_artists: artists
     }
-    
-    # curation_hash["approved_artists"]
-    # curation_hash = curation.public_info
-    # curation_hash["approved_artists"] = curation.approved_artists
-    # curation_hash["submitted_token_listings"] = curation.curation_listings
-
-    # render json: {
-    #   submitted_token_listings: curation_hash["submitted_token_listings"],
-    #   approved_artists: curation_hash["approved_artists"]
-    # }
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
