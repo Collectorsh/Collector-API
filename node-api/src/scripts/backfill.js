@@ -4,8 +4,6 @@ import { connection } from "../utils/RpcConnection.js"
 import { Metaplex } from "@metaplex-foundation/js"
 import { verifyTokenBurned } from "./verifyTokenBurned.js"
 
-//TODO deal with nft_state "frozen" and "burned"
-
 export const backfill = async () => { 
   console.log("-------------------")
   console.log("Running Backfill Script")

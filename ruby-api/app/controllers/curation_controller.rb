@@ -87,13 +87,17 @@ class CurationController < ApplicationController
     
     #filter to exclude nft_state = "burned"
     listings = curation.curation_listings.map(&:attributes).select{|x| x["nft_state"] != "burned"}
-    
+
     artists = (User.where(id: listings.map {|l| l["artist_id"]}).map(&:public_info) + curation.approved_artists).uniq
+
+    owners = User.where(id: listings.map {|l| l["owner_id"]}).map(&:public_info).uniq
 
     render json: {
       submitted_token_listings: listings,
-      approved_artists: artists
+      approved_artists: artists,
+      owners: owners
     }
+
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
