@@ -367,6 +367,19 @@ class UserController < ApplicationController
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
+
+  def save_curations_order
+    return render json: { status: 'error', msg: 'params missing' } unless params[:curation_ids]
+    
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:curations_order, params[:curation_ids])
+
+    render json: { status: 'success', user: user }
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
   private
 
   def verify_signature(public_key, nonce)
