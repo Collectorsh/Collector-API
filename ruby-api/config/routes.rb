@@ -52,6 +52,7 @@ Rails.application.routes.draw do
     post '/get_curator_by_username', to: 'user#get_curator_by_username'
     post '/get_user_by_address', to: 'user#get_user_by_address'
     post '/verify', to: 'user#verify'
+    post '/save_curations_order', to: 'user#save_curations_order'
   end
 
   scope :following do
