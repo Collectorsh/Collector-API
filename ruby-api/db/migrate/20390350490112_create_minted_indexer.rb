@@ -16,9 +16,10 @@ class CreateMintedIndexer < ActiveRecord::Migration[6.1]
       t.boolean :is_master_edition, default: false
       t.integer :supply
       t.integer :max_supply
-      t.json :creators
+      t.jsonb :creators
       t.json :files
       t.integer :royalties
+      t.boolean :is_collection_nft
 
       t.timestamps
     end
