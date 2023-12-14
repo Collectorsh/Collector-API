@@ -30,7 +30,8 @@ class MintedIndexerController < ApplicationController
       max_supply: token['max_supply'],
       creators: token['creators'],
       files: token['files'],
-      royalties: token['royalties']
+      royalties: token['royalties'],
+      is_collection_nft: token['is_collection_nft'],
     })
 
     if minted_indexer.errors.any?
@@ -45,6 +46,21 @@ class MintedIndexerController < ApplicationController
 
   def get_by_owner
     minted_indexer = MintedIndexer.where(owner_address: params[:owner_address])
+
+    if minted_indexer
+      return render json: { status: 'success', mints: minted_indexer }
+    else
+      return render json: { status: 'error', msg: 'Mint not found' }
+    end
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def get_by_creator
+    minted_indexer = MintedIndexer.where("EXISTS (
+      SELECT 1 FROM json_array_elements_text(creators::json) as elem
+      WHERE json_extract_path_text(elem::json, 'address') = ?
+    )", params[:artist_address])
 
     if minted_indexer
       return render json: { status: 'success', mints: minted_indexer }

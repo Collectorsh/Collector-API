@@ -207,6 +207,7 @@ Rails.application.routes.draw do
     post '/create', to: 'minted_indexer#create'
     post '/get_by_owner', to: 'minted_indexer#get_by_owner'
     post '/get_by_mint', to: 'minted_indexer#get_by_mint'
+    post '/get_by_creator', to: 'minted_indexer#get_by_creator'
   end
 
   get '/auth/:provider/callback', to: "sessions#create"
