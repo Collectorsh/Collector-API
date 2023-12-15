@@ -46,6 +46,8 @@ class MintedIndexerController < ApplicationController
 
   def get_by_owner
     minted_indexer = MintedIndexer.where(owner_address: params[:owner_address])
+      .where.not(nft_state: "burned")
+      .or(MintedIndexer.where(owner_address: params[:owner_address], nft_state: nil))
 
     if minted_indexer
       return render json: { status: 'success', mints: minted_indexer }
@@ -57,10 +59,12 @@ class MintedIndexerController < ApplicationController
   end
 
   def get_by_creator
-    minted_indexer = MintedIndexer.where("EXISTS (
-      SELECT 1 FROM json_array_elements_text(creators::json) as elem
-      WHERE json_extract_path_text(elem::json, 'address') = ?
-    )", params[:artist_address])
+    minted_indexer = MintedIndexer.where(
+      "EXISTS (
+        SELECT 1 FROM json_array_elements_text(creators::json) as elem
+        WHERE json_extract_path_text(elem::json, 'address') = ?
+      ) AND (nft_state != 'burned' OR nft_state IS NULL)", 
+    params[:artist_address])
 
     if minted_indexer
       return render json: { status: 'success', mints: minted_indexer }
@@ -73,6 +77,9 @@ class MintedIndexerController < ApplicationController
 
   def get_by_mint
     minted_indexer = MintedIndexer.find_by(mint: params[:mint])
+      .where.not(nft_state: "burned")
+      .or(MintedIndexer.where(mint: params[:mint], nft_state: nil))
+    
     if minted_indexer
       return render json: { status: 'success', mint: minted_indexer }
     else
