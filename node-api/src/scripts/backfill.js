@@ -4,9 +4,9 @@ import { connection } from "../utils/RpcConnection.js"
 import { Metaplex } from "@metaplex-foundation/js"
 import { verifyTokenBurned } from "./verifyTokenBurned.js"
 
-export const backfill = async () => { 
+export const backfillListings = async () => { 
   console.log("-------------------")
-  console.log("Running Backfill Script")
+  console.log("Running Backfill Listings Script")
   //fetch all curation_listings
   const active_listings = await postgres('curation_listings')
     .where({
@@ -128,7 +128,7 @@ export const backfill = async () => {
             })
             .where({ mint: listing.mint })
             .catch((e) => {
-              console.log(`Error updating curation_listing ${ listing.mint }  burn state:`, e)
+              console.log(`Error updating curation_listing ${ listing.mint } owner:`, e)
             })
           res.update = update;
         }
@@ -164,8 +164,81 @@ export const backfill = async () => {
   return results.filter(res => {
     return res.state && res.state !== "initialized"
   })
+}
 
-  // TODO same process with minted_indexer
+export const backfillIndexer = async () => { 
+  console.log("-------------------")
+  console.log("Running Backfill Indexer Script")
+  //fetch all minted_indexer items
+  const indexes = await postgres('minted_indexer')
+    .select("*")
+    .where(function() {
+      this.whereNot('nft_state', 'burned').orWhereNull('nft_state');
+    })
+    .catch((e) => {
+      console.log("Error fetching minted_indexer", e)
+    })
+  
+  const results = await Promise.all(indexes.map(async (indexToken) => {
+    let res = { mint: indexToken.mint }
+    const mintPublicKey = new PublicKey(indexToken.mint);
+    //fetch metadata account
+    //if metadata account doesn't exist, verify token has been burned
+    let metadataAccountInfo = null;
+    try {
+      const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
+      metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
+
+    } catch (e) {
+      const state = await verifyTokenBurned(mintPublicKey)
+      // update curation_listing "nft_state" based on burn verification
+      const update = await postgres('minted_indexer')
+        .update({ nft_state: state,})
+        .where({ mint: indexToken.mint })
+        .catch((e) => {
+          console.log(`Error updating indexer item ${ indexToken.mint } burn state:`, e)
+        })
+      res.update = update;
+      res.state = state;
+    }
+
+  
+    if (!metadataAccountInfo) return res;
+
+    //looking out for owner mismatches, if so update to match onchain
+    const owner = metadataAccountInfo.value.data.parsed.info.owner
+
+    //if owner doesn't match update minted_indexer "owner_address" and owner id
+    if (owner !== indexToken.owner_address) {
+      const state = "owner-update"
+
+      //try to find the owners Collector user id if it exists
+      const ownerId = await postgres('users')
+        .select('id')
+        .whereLike('public_keys', `%${ owner }%`)
+        .first()
+
+      res.ownerId = ownerId;
+      res.state = state
+
+      const update = await postgres('minted_indexer')
+        .update({
+          nft_state: state,
+          owner_address: owner,
+          owner_id: ownerId ? ownerId.id : null,
+        })
+        .where({ mint: indexToken.mint })
+        .catch((e) => {
+          console.log(`Error updating indexer item ${ indexToken.mint } owner:`, e)
+        })
+      res.update = update;
+    }
+   
+
+    return res
+  }))
+
+  return results.filter(res => res.state)
 }
 
 
