@@ -124,7 +124,7 @@
 
     def upload_image
       begin
-        response = Cloudinary::Uploader.upload(image_url, resource_type: "auto", public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", overwrite: true)
+        response = Cloudinary::Uploader.upload(image_url, resource_type: "auto", public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", overwrite: true, invalidate: true)
         response
       rescue => e
         if e.message.include?("File size too large")
@@ -152,6 +152,7 @@
           resource_type: "auto", 
           public_id: "#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", 
           overwrite: true,
+          invalidate: true
         )
         image_file.close
         image_file.unlink # delete the temporary file

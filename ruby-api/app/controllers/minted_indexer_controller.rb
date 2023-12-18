@@ -44,6 +44,44 @@ class MintedIndexerController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def update_metadata 
+    token = params[:token]
+
+    owner_address = token['owner_address']
+    artist_address = token['artist_address']
+    owner_id = params[:owner_id] || (owner_address.present? ? User.find_by("public_keys LIKE ?", "%#{owner_address}%")&.id : nil)
+    artist_id = params[:artist_id] || (artist_address.present? ? User.find_by("public_keys LIKE ?", "%#{artist_address}%")&.id : nil)
+
+    minted_indexer = MintedIndexer.find_by(mint: token['mint'])
+
+    if minted_indexer.update({
+      name: token['name'],
+      owner_id: owner_id,
+      owner_address: owner_address,
+      artist_id: artist_id,
+      artist_address: artist_address,
+      animation_url: token['animation_url'],
+      image: token['image'],
+      description: token['description'],
+      primary_sale_happened: token['primary_sale_happened'],
+      is_edition: token['is_edition'],
+      parent: token['parent'],
+      is_master_edition: token['is_master_edition'],
+      supply: token['supply'],
+      max_supply: token['max_supply'],
+      creators: token['creators'],
+      files: token['files'],
+      royalties: token['royalties'],
+      is_collection_nft: token['is_collection_nft'],
+    })
+      return render json: { status: 'success', minted: minted_indexer.to_json }
+    else
+      return render json: { status: 'error', msg: 'token not upddated' } 
+    end
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
   def get_by_owner
     minted_indexer = MintedIndexer.where(owner_address: params[:owner_address])
       .where.not(nft_state: "burned")
