@@ -99,6 +99,7 @@ Rails.application.routes.draw do
     post '/upload_with_tokens', to: 'images#upload_with_tokens'
     post '/upload_single_token', to: 'images#upload_single_token'
     post '/upload_image_buffer', to: 'images#upload_image_buffer'
+    post '/upload_video', to: 'images#upload_video'
   end
 
   scope :listing do
@@ -191,6 +192,7 @@ Rails.application.routes.draw do
     post '/cancel_listing', to: 'curation_listing#cancel_listing'
     post '/delete_submission', to: 'curation_listing#delete_submission'
     post '/delete_multiple_submissions', to: 'curation_listing#delete_multiple_submissions'
+    post '/update_listing_metadata', to: 'curation_listing#update_listing_metadata'
   end
 
   scope :sales_history do
@@ -208,6 +210,7 @@ Rails.application.routes.draw do
     post '/get_by_owner', to: 'minted_indexer#get_by_owner'
     post '/get_by_mint', to: 'minted_indexer#get_by_mint'
     post '/get_by_creator', to: 'minted_indexer#get_by_creator'
+    post '/update_metadata', to: 'minted_indexer#update_metadata'
   end
 
   get '/auth/:provider/callback', to: "sessions#create"

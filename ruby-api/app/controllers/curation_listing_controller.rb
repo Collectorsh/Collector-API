@@ -115,6 +115,45 @@ class CurationListingController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def update_listing_metadata
+    token = params[:token]
+
+    return render json: { status: 'error', msg: 'Token not found' } unless token
+
+    listings = CurationListing.where(mint: token['mint'])
+
+    owner_address = token['owner_address']
+    artist_address = token['artist_address']
+    owner_id = params[:owner_id] || (owner_address.present? ? User.find_by("public_keys LIKE ?", "%#{owner_address}%")&.id : nil)
+    artist_id = params[:artist_id] || (artist_address.present? ? User.find_by("public_keys LIKE ?", "%#{artist_address}%")&.id : nil)
+  
+    if listings.update_all(
+      owner_id: owner_id,
+      artist_id: artist_id,
+      name: token['name'],
+      owner_address: owner_address,
+      artist_address: artist_address,
+      aspect_ratio: token['aspect_ratio'], # aspectRatio added in the submitArtModal on the FE
+      animation_url: token['animation_url'],
+      image: token['image'],
+      description: token['description'],
+      creators: token['creators'],
+      primary_sale_happened: token['primary_sale_happened'],
+      is_edition: token['is_edition'],
+      is_master_edition: token['is_master_edition'],
+      supply: token['supply'],
+      parent: token['parent'],
+      max_supply: token['max_supply'],
+      files: token['files']
+    ) 
+      render json: { status: 'success', msg: 'Token listing updated' }
+    else
+      render json: { status: 'error', msg: 'Failed to update token listing' }, status: :unprocessable_entity
+    end
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
   def update_listing
     token = @authorized_listing
 

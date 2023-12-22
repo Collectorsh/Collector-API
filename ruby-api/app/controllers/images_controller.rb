@@ -243,5 +243,23 @@ class ImagesController < ApplicationController
       render json: { error: 'Error Uploading to Cloudinary with tokens' }, status: :internal_server_error
     end
   end
+
+  def upload_video
+    token = params[:token]
+    video_url = params[:video_url]
+    puts "video_url: #{video_url}"
+    
+    return render json: { error: 'Missing required parameters' }, status: :bad_request unless token["mint"].present? && video_url.present?
+    
+    puts "Uploading video for #{token['mint']}"
+
+    cld_id = ImageUploadService.get_token_cld_id(token)
+    response = Cloudinary::Uploader.upload_large(video_url, resource_type: :video, public_id: "video/#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", overwrite: true, invalidate: true)
+
+    return render json: { public_id: response['public_id'] }, status: :ok
+  rescue => e
+    puts "Error Optimizing video: #{e.message}"
+    render json: { error: 'Error Optimizing video', msg: e.message }, status: :internal_server_error
+  end
 end
 
