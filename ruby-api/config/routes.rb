@@ -99,6 +99,7 @@ Rails.application.routes.draw do
     post '/upload_with_tokens', to: 'images#upload_with_tokens'
     post '/upload_single_token', to: 'images#upload_single_token'
     post '/upload_image_buffer', to: 'images#upload_image_buffer'
+    post '/upload_video', to: 'images#upload_video'
   end
 
   scope :listing do
