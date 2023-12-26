@@ -17,16 +17,18 @@ class CurationListingController < ApplicationController
 
       is_master_edition = token['is_master_edition']
 
-      if is_master_edition
-        #check if master edition listing already exists and is listed
-        # if so reject submission
-        existing_listing = CurationListing.find_by(mint: token['mint'], listed_status: "listed")
-        if existing_listing 
-          puts "Master Edition already listed: #{existing_listing.mint}"
-          errors << {mint: existing_listing.mint, message: "Master Edition already listed: #{existing_listing.mint}"} 
-          next;
-        end
-      end
+
+      # just do the check on listing
+      # if is_master_edition
+      #   #check if master edition listing already exists and is listed
+      #   # if so reject submission
+      #   existing_listing = CurationListing.find_by(mint: token['mint'], listed_status: "listed")
+      #   if existing_listing 
+      #     puts "Master Edition already listed: #{existing_listing.mint}"
+      #     errors << {mint: existing_listing.mint, message: "Master Edition already listed: #{existing_listing.mint}"} 
+      #     next;
+      #   end
+      # end
 
       owner_address = token['owner_address']
       artist_address = token['artist_address']
@@ -237,6 +239,17 @@ class CurationListingController < ApplicationController
       else
         render json: { status: 'error', msg: 'Failed to cancel token listing' }, status: :unprocessable_entity
       end
+    end
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def get_listed_item
+    token = CurationListing.includes(:curation).find_by(mint: params[:token_mint], listed_status: "listed")
+    if token
+      render json: { status: 'success', token: token, curationName: token.curation.name }
+    else
+      render json: { status: 'error', msg: 'Token not found' }
     end
   rescue StandardError => e
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
