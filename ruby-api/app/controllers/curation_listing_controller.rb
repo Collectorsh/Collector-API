@@ -164,7 +164,10 @@ class CurationListingController < ApplicationController
     master_edition_market_address = params[:master_edition_market_address]
 
     has_required_props = token.is_master_edition ? master_edition_market_address.present? : listing_receipt.present?
-    return render json: { status: 'error', msg: 'Props not sent' } unless buy_now_price.present? && has_required_props
+    if !has_required_props || !buy_now_price.present?
+      puts "Missing required props #{token.mint}: ME market address#{master_edition_market_address}, listing reciept: #{listing_receipt}, buy now price: #{buy_now_price}" 
+      return render json: { status: 'error', msg: 'Props not sent' }
+    end
 
     if token.update(
       listed_status: "listed", 
@@ -188,6 +191,7 @@ class CurationListingController < ApplicationController
       return render json: { status: 'error', msg: 'Failed to update token listing' }, status: :unprocessable_entity
     end
   rescue StandardError => e
+    puts "Error updating listing #{token.mint}: #{e.message}"
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -253,8 +257,15 @@ class CurationListingController < ApplicationController
     user = get_authorized_user
     token = CurationListing.includes(:curation).find_by(mint: params[:token_mint], curation_id: params[:curation_id])
 
-    return render json: { status: 'error', msg: 'Token not found' } unless token
-    return render json: { status: 'error', msg: 'Token not owned by user' } unless user.public_keys.include?(token.owner_address)
+    if !token.present?
+      puts "Token not found: #{params[:token_mint]}"
+      return render json: { status: 'error', msg: 'Token not found' }
+    end
+
+    if !user.public_keys.include?(token.owner_address)
+      puts "Token not owned by user: #{token.mint}"
+      return render json: { status: 'error', msg: 'Token not owned by user' }
+    end
 
     @authorized_listing = token
   rescue StandardError => e
