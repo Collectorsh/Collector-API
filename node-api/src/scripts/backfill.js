@@ -4,6 +4,9 @@ import { connection } from "../utils/RpcConnection.js"
 import { Metaplex } from "@metaplex-foundation/js"
 import { verifyTokenBurned } from "./verifyTokenBurned.js"
 
+const pause = (ms = 250) => new Promise(resolve => setTimeout(resolve, ms));
+const metaplex = Metaplex.make(connection);
+
 export const backfillListings = async () => { 
   console.log("-------------------")
   console.log("Running Backfill Listings Script")
@@ -17,8 +20,10 @@ export const backfillListings = async () => {
     })
   
   //find onchain owner address,
-  const metaplex = Metaplex.make(connection);
+ 
   const results = await Promise.all(active_listings.map(async (listing) => { 
+    await pause();
+
     let res = {mint: listing.mint}
     const mintPublicKey = new PublicKey(listing.mint);
 
@@ -28,8 +33,6 @@ export const backfillListings = async () => {
     try {
       const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
       metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
-
-      
     } catch (e) {
       const state = await verifyTokenBurned(mintPublicKey)
       // update curation_listing "nft_state" based on burn verification
@@ -44,10 +47,13 @@ export const backfillListings = async () => {
     }
       
     try {      
-      if (!metadataAccountInfo) return res;      
+      const owner = metadataAccountInfo.value.data.parsed.info.owner
+      if (!metadataAccountInfo || !owner) return res;      
+
+      res.onChainOwner = owner;
+      res.listing_owner = listing.owner_address;
 
       //looking out for owner mismatches, which invalidates listings (unless its a master edition)
-      const owner = metadataAccountInfo.value.data.parsed.info.owner
       if (owner !== listing.owner_address) {
         res.ownersMatch = false;
         const metadata = await metaplex.nfts().findByMint({
@@ -109,7 +115,6 @@ export const backfillListings = async () => {
           const state = "invalid-listing"
           res.state = state
           res.owner = owner;
-          res.prev_owner = listing.owner_address;
 
           //try to find the owners Collector user id if it exists
           const ownerId = await postgres('users')
@@ -180,6 +185,8 @@ export const backfillIndexer = async () => {
     })
   
   const results = await Promise.all(indexes.map(async (indexToken) => {
+    await pause();
+
     let res = { mint: indexToken.mint }
     const mintPublicKey = new PublicKey(indexToken.mint);
     //fetch metadata account
@@ -207,34 +214,47 @@ export const backfillIndexer = async () => {
 
     //looking out for owner mismatches, if so update to match onchain
     const owner = metadataAccountInfo.value.data.parsed.info.owner
-
+    res.onChainOwner = owner;
+    res.indexer_owner = indexToken.owner_address;
     //if owner doesn't match update minted_indexer "owner_address" and owner id
     if (owner !== indexToken.owner_address) {
-      const state = "owner-update"
+      const metadata = await metaplex.nfts().findByMint({
+        mintAddress: mintPublicKey
+      })
 
-      //try to find the owners Collector user id if it exists
-      const ownerId = await postgres('users')
-        .select('id')
-        .whereLike('public_keys', `%${ owner }%`)
-        .first()
+      const editionData = metadata.edition;
 
-      res.ownerId = ownerId;
-      res.state = state
+      const isMasterEdition = Number(editionData.maxSupply) > 0;
+      res.isMasterEdition = isMasterEdition;
 
-      const update = await postgres('minted_indexer')
-        .update({
-          nft_state: state,
-          owner_address: owner,
-          owner_id: ownerId ? ownerId.id : null,
-        })
-        .where({ mint: indexToken.mint })
-        .catch((e) => {
-          console.log(`Error updating indexer item ${ indexToken.mint } owner:`, e)
-        })
-      res.update = update;
+      if (isMasterEdition) { 
+        const state = "master-edition-listed"
+        res.state = state
+      } else {
+        const state = "owner-update"
+  
+        //try to find the owners Collector user id if it exists
+        const ownerId = await postgres('users')
+          .select('id')
+          .whereLike('public_keys', `%${ owner }%`)
+          .first()
+  
+        res.ownerId = ownerId;
+        res.state = state
+  
+        const update = await postgres('minted_indexer')
+          .update({
+            nft_state: state,
+            owner_address: owner,
+            owner_id: ownerId ? ownerId.id : null,
+          })
+          .where({ mint: indexToken.mint })
+          .catch((e) => {
+            console.log(`Error updating indexer item ${ indexToken.mint } owner:`, e)
+          })
+        res.update = update;
+      }
     }
-   
-
     return res
   }))
 
