@@ -11,7 +11,7 @@ class UserController < ApplicationController
                    public_keys: user.public_keys, gallery_view: user.gallery_view,
                    twitter_screen_name: user.twitter_screen_name, twitter_profile_image: user.twitter_profile_image }
   rescue StandardError => e
-    Rails.logger.error e.backtrace
+    Rails.logger.error("Error getting username: #{e.message}")
     render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
@@ -28,6 +28,7 @@ class UserController < ApplicationController
 
     render json: { status: 'success', user: user }
   rescue StandardError => e
+    Rails.logger.error("Error getting user from api key: #{e.message}")
     puts "error getting from api _key: #{e.message}"
     render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
@@ -48,6 +49,9 @@ class UserController < ApplicationController
     return render json: { status: 'success', user: user } if user.valid?
 
     render json: { status: 'error', msg: user.errors.full_messages.join(', ') }
+  rescue StandardError => e
+    Rails.logger.error("Error creating or updating username: #{e.message}")
+    render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
   def default_visibility

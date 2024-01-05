@@ -7,6 +7,8 @@ import { Metaplex, bundlrStorage, keypairIdentity, toMetaplexFile, toMetaplexFil
 import { formatRSAPrivateKey } from '../utils/formatRSA.js';
 import { connection } from "../utils/RpcConnection.js";
 import postgres from "../../db/postgres.js";
+import { logtail } from "../utils/logtail.js";
+import { parseError } from "../utils/parseError.js";
 
 //Standard Ref = https://docs.metaplex.com/programs/token-metadata/changelog/v1.0
 
@@ -80,6 +82,8 @@ export const uploadCollectionMetadata = async (req, res) => {
     })
 
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    const err = parseError(e)
+    logtail.error(`uploadCollectionMetadata error: ${err}`)
+    res.status(500).json({ error: err })
   }
 }

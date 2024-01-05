@@ -35,12 +35,16 @@ class MintedIndexerController < ApplicationController
     })
 
     if minted_indexer.errors.any?
+      Rails.logger.error("Failed to save token index for #{token['mint']}: #{minted_indexer.errors.full_messages.join(", ")}")
       puts "Failed to save index for #{token['mint']}: #{minted_indexer.errors.full_messages.join(", ")}"
     else
       return render json: { status: 'success', minted: minted_indexer.to_json }
     end
 
   rescue StandardError => e
+    # Rails.logger.error("Failed to create token index")
+    Rails.logger.error("Failed to create token index: #{e.message} - Backtrace: #{e.backtrace.join("$/")}")
+
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -76,9 +80,11 @@ class MintedIndexerController < ApplicationController
     })
       return render json: { status: 'success', minted: minted_indexer.to_json }
     else
+      Rails.logger.error("Failed to update token index metadata for #{token['mint']}: #{minted_indexer.errors.full_messages.join(", ")}")
       return render json: { status: 'error', msg: 'token not upddated' } 
     end
   rescue StandardError => e
+    Rails.logger.error("Failed to update token index metadata}: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -93,6 +99,7 @@ class MintedIndexerController < ApplicationController
       return render json: { status: 'error', msg: 'Mint not found' }
     end
   rescue StandardError => e
+    Rails.logger.error("Failed to get token index by owner: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -110,6 +117,7 @@ class MintedIndexerController < ApplicationController
       return render json: { status: 'error', msg: 'Mint not found' }
     end
   rescue StandardError => e
+    Rails.logger.error("Failed to get token index by creator: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -124,6 +132,7 @@ class MintedIndexerController < ApplicationController
       return render json: { status: 'error', msg: 'Mint not found' }
     end
   rescue StandardError => e
+    Rails.logger.error("Failed to get token index by mint: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 

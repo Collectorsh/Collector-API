@@ -42,6 +42,7 @@ class SalesHistoryController < ApplicationController
           }
         })
       else
+        Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
         puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
       end
 
@@ -49,6 +50,7 @@ class SalesHistoryController < ApplicationController
       minted_indexer = MintedIndexer.find_by(mint: mint)
 
       if minted_indexer && !minted_indexer.update(supply: new_supply)
+        Rails.logger.error("Record Master Editions Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
         puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
       end
 
@@ -74,6 +76,7 @@ class SalesHistoryController < ApplicationController
             }
           })
         else
+          Rails.logger.error("Record Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
           puts "Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}"
         end
 
@@ -85,6 +88,7 @@ class SalesHistoryController < ApplicationController
           owner_id: buyer_id,
           primary_sale_happened: true,
         )
+          Rails.logger.error("Record Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
           puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
         end
       end
@@ -108,12 +112,17 @@ class SalesHistoryController < ApplicationController
     )
 
     if recorded_sale.errors.any?
+      Rails.logger.error("Failed to save recorded sale: #{recorded_sale.errors.full_messages.join(", ")}")
       puts "Failed to save recorded sale: #{recorded_sale.errors.full_messages.join(", ")}"
       return render json: { status: 'error', msg: "Failed to save sale history" }, status: :unprocessable_entity
     else
       return render json: { status: 'success', msg: 'Token sale recorded' }
     end
   rescue StandardError => e
+    # Rails.logger.error("Error recording sale: #{e.message}")
+    # Rails.logger.error(e.backtrace.join("\n"))
+    Rails.logger.error(["Error recording sale: #{e.message} - Backtrace: ", *e.backtrace].join("$/"))
+
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -147,6 +156,7 @@ class SalesHistoryController < ApplicationController
 
     render json: modified_records
   rescue StandardError => e
+    Rails.logger.error("Error getting sales history: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 

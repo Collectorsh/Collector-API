@@ -59,6 +59,7 @@ class CurationListingController < ApplicationController
 
       if listing.errors.any?
         errors << { mint: token['mint'], message: "Failed to submit: #{token['mint']}"}
+        Rails.logger.error("Failed to save listing for #{token['mint']}: #{listing.errors.full_messages.join(", ")}")
         puts "Failed to save listing for #{token['mint']}: #{listing.errors.full_messages.join(", ")}"
       else
         successfull_listings << listing
@@ -69,6 +70,8 @@ class CurationListingController < ApplicationController
     return render json: { status: 'success', listings: successfull_listings, errors: errors }
 
   rescue StandardError => e
+    # Rails.logger.error "Error submitting tokens: #{e.message}"
+    Rails.logger.error(["Error submitting tokens: #{e.message} - Backtrace: ", *e.backtrace].join("$/"))
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -85,6 +88,7 @@ class CurationListingController < ApplicationController
       render json: { status: 'error', msg: 'Failed to delete token submission' }, status: :unprocessable_entity
     end
   rescue StandardError => e
+    Rails.logger.error("Error deleting submission: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -114,6 +118,7 @@ class CurationListingController < ApplicationController
       render json: { status: 'error', msg: 'Failed to delete token submissions' }
     end
   rescue StandardError => e
+    Rails.logger.error("Error deleting submissions: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -150,9 +155,11 @@ class CurationListingController < ApplicationController
     ) 
       render json: { status: 'success', msg: 'Token listing updated' }
     else
+      Rails.logger.error("Failed to update listing metadata for #{token['mint']}: #{listings.errors.full_messages.join(", ")}")
       render json: { status: 'error', msg: 'Failed to update token listing' }, status: :unprocessable_entity
     end
   rescue StandardError => e
+    Rails.logger.error("Error updating listing metadata: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -190,10 +197,14 @@ class CurationListingController < ApplicationController
       return render json: { status: 'success', msg: 'Token listing updated' }
     else 
       puts "FAILED TO SAVE TOKEN: #{token.errors.full_messages.join(", ")}"
+      Rails.logger.error("Failed to update listing for #{token.mint}: #{token.errors.full_messages.join(", ")}")
       return render json: { status: 'error', msg: 'Failed to update token listing' }, status: :unprocessable_entity
     end
   rescue StandardError => e
     puts "Error updating listing #{token.mint}: #{e.message}"
+    # Rails.logger.error("Error updating listing: #{e.message}")
+    # Rails.logger.error(e.backtrace.join("\n"))
+    Rails.logger.error(["Error updating listing: #{e.message} - Backtrace: ", *e.backtrace].join("$/"))
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -214,6 +225,7 @@ class CurationListingController < ApplicationController
         })
         render json: { status: 'success', msg: 'Master Edition listing canceled' }
       else
+        Rails.logger.error("Failed to cancel Master Edition listing for #{token.mint}: #{token.errors.full_messages.join(", ")}")
         render json: { status: 'error', msg: 'Failed to cancel Master Edition listing' }, status: :unprocessable_entity
       end
 
@@ -221,6 +233,7 @@ class CurationListingController < ApplicationController
       minted_indexer = MintedIndexer.find_by(mint: token.mint)
       if minted_indexer && !minted_indexer.update(primary_sale_happened: true)
         puts "Failed to update minted_indexer for #{token.mintt}: #{minted_indexer.errors.full_messages.join(", ")}"
+        Rails.logger.error("Failed to update minted_indexer for #{token.mint}: #{minted_indexer.errors.full_messages.join(", ")}")
       end
 
     else
@@ -237,10 +250,14 @@ class CurationListingController < ApplicationController
         })
         render json: { status: 'success', msg: 'Token listing canceled' }
       else
+        Rails.logger.error("Failed to cancel listing for #{token.mint}: #{token.errors.full_messages.join(", ")}")
         render json: { status: 'error', msg: 'Failed to cancel token listing' }, status: :unprocessable_entity
       end
     end
   rescue StandardError => e
+    # Rails.logger.error("Error canceling listing: #{e.message}")
+    # Rails.logger.error(e.backtrace.join("\n"))
+    Rails.logger.error(["Error canceling listing: #{e.message} - Backtrace: ", *e.backtrace].join("$/"))
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -252,6 +269,7 @@ class CurationListingController < ApplicationController
       render json: { status: 'error', msg: 'Token not found' }
     end
   rescue StandardError => e
+    Rails.logger.error("Error getting listed item: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -282,6 +300,7 @@ class CurationListingController < ApplicationController
 
     @authorized_listing = token
   rescue StandardError => e
+    Rails.logger.error("Error getting token from confirmed owner: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 end

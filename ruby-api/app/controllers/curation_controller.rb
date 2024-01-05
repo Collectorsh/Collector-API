@@ -31,6 +31,7 @@ class CurationController < ApplicationController
     end
   rescue StandardError => e
     puts "Failed to create curation: #{e.message}"
+    Rails.logger.error("Failed to create curation: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -57,12 +58,14 @@ class CurationController < ApplicationController
 
     if curation.errors.any?
       puts "Failed to save curation: #{listing.errors.full_messages.join(", ")}"
+      Rails.logger.error("Failed to save curation: #{listing.errors.full_messages.join(", ")}")
       return render json: { status: 'error', msg: "Failed to save Curation" }, status: :unprocessable_entity
     else
       return render json: { status: 'success', msg: 'Curation created' }
     end
   rescue StandardError => e
     puts "Failed to create curation: #{e.message}"
+    Rails.logger.error("Failed to create curation: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -84,7 +87,7 @@ class CurationController < ApplicationController
     unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
       return render json: { error: "Curation not found" }, status: :not_found
     end
-    
+        
     #filter to exclude nft_state = "burned"
     listings = curation.curation_listings.map(&:attributes).select{|x| x["nft_state"] != "burned"}
 
@@ -99,6 +102,7 @@ class CurationController < ApplicationController
     }
 
   rescue StandardError => e
+    Rails.logger.error("Failed to get listings and artists by name: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -125,6 +129,7 @@ class CurationController < ApplicationController
 
     render json: curations
   rescue StandardError => e
+    Rails.logger.error("Failed to get curations by approved artist: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -136,6 +141,7 @@ class CurationController < ApplicationController
 
     render json: {status: 'success', curations: curations}
   rescue StandardError => e
+    Rails.logger.error("Failed to get curations by listing mint: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -144,6 +150,7 @@ class CurationController < ApplicationController
     curations = highlight.fetch_curations
     render json: curations
   rescue StandardError => e
+    Rails.logger.error("Failed to get highlighted curations: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -160,6 +167,7 @@ class CurationController < ApplicationController
       viewer_passcode: curation.viewer_passcode
     }
   rescue StandardError => e
+    Rails.logger.error("Failed to get private content: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -174,6 +182,7 @@ class CurationController < ApplicationController
       draft_content: curation.draft_content || init_content,
     }
   rescue StandardError => e
+    Rails.logger.error("Failed to get viewer private content: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -188,6 +197,7 @@ class CurationController < ApplicationController
 
     render json: { status: 'success', msg: 'Curation published' }
   rescue StandardError => e
+    Rails.logger.error("Failed to publish content: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -199,6 +209,7 @@ class CurationController < ApplicationController
 
     render json: { status: 'success', msg: 'Curation unpublished' }
   rescue StandardError => e
+    Rails.logger.error("Failed to unpublish content: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -213,6 +224,7 @@ class CurationController < ApplicationController
 
     render json: { status: 'success', msg: 'Curation draft saved' }
   rescue StandardError => e
+    Rails.logger.error("Failed to save draft content: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -232,6 +244,7 @@ class CurationController < ApplicationController
       render json: { status: 'error', msg: curation.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
   rescue StandardError => e
+    Rails.logger.error("Failed to update approved artists: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -256,6 +269,7 @@ class CurationController < ApplicationController
 
     render json: { status: 'success', curation: curation.condensed_with_curator_and_listings_and_passcode }
   rescue StandardError => e
+    Rails.logger.error("Failed to update self as approved artist: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -273,6 +287,7 @@ class CurationController < ApplicationController
       render json: { status: 'error', msg: curation.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
   rescue StandardError => e
+    Rails.logger.error("Failed to update name: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -300,6 +315,7 @@ class CurationController < ApplicationController
       return render json: { status: 'error', msg: curation.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
   rescue StandardError => e
+    Rails.logger.error("Failed to generate viewer passcode: #{e.message}")
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -324,6 +340,7 @@ class CurationController < ApplicationController
 
     render json: curations
   rescue StandardError => e
+    Rails.logger.error("Failed to get all curator curations with private hash: #{e.message}")
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
   
