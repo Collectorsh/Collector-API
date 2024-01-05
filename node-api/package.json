@@ -4,6 +4,7 @@
   "main": "server.js",
   "license": "MIT",
   "dependencies": {
+    "@logtail/node": "^0.4.17",
     "@metaplex-foundation/js": "^0.19.5",
     "@solana/web3.js": "^1.78.5",
     "cors": "^2.8.5",

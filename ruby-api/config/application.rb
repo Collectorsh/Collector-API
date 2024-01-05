@@ -44,5 +44,7 @@ module SolstaApi
     config.destination_address = 'RyvoTTxHVn48GaAA26d8TfBqZcrkVHN4Fyo2LsucTtV'
     config.monthly = 1000000000
     config.yearly = 8000000000
+
+    config.logger = Logtail::Logger.create_default_logger("rryqu8e9b6a7mfD9ZDr9gxdk")
   end
 end

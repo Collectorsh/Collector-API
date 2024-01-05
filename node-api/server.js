@@ -6,7 +6,11 @@ import multer from 'multer';
 import { uploadMetadata } from './src/controllers/uploadMetadata.js';
 import { uploadCollectionMetadata } from './src/controllers/uploadCollectionMetadata.js';
 import { runBackfillJob } from './cron/backfill-job.js';
-import { backfillIndexer, backfillListings } from './src/scripts/backfill.js';
+import { backfillIndexer, backfillListings, updateIndexerEditions } from './src/scripts/backfill.js';
+import { logtail } from './src/utils/logtail.js';
+
+
+
 dotenv.config();
 
 const uploadMiddleware = multer({
@@ -52,18 +56,51 @@ app.post('/upload-collection-metadata',
 )
 
 app.get('/runBackfillJob', async (req, res) => {
-  // const backfillListingsResponse = await backfillListings();
+  const backfillListingsResponse = await backfillListings();
   const backfillIndexerResponse = await backfillIndexer()
   res.send({ 
-    // backfillListingsResponse,
+    backfillListingsResponse,
     backfillIndexerResponse
    });
 })
 
+app.get('/updateIndexer', async (req, res) => {
+  const response = await updateIndexerEditions()
+  res.send(response);
+})
+
 app.get('/health', (req, res) => { res.send("OK!") })
 
+//initiate cron job for backfills
 runBackfillJob();
 
+//handle errors
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT. Shutting down gracefully.');
+  await logtail.flush();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM. Shutting down gracefully.');
+  await logtail.flush();
+  process.exit(0);
+});
+
+process.on('uncaughtException', async (error) => {
+  console.error('Uncaught Exception:', error);
+  logtail.error(`Uncaught Exception: ${error.message}`);
+  await logtail.flush()
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logtail.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+});
+
+//Start server
+logtail.info('Starting server');
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${ PORT }`);
 });

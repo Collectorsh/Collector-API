@@ -28,11 +28,20 @@
     end
 
     def self.get_token_cld_id(token)
-      if token['is_edition'] && token['image']
-        "edition-#{clean(token['image'])}"
-      else
-        token['mint']
+      # if token['is_edition'] && token['image']
+      #   "edition-#{clean(token['image'])}"
+      # else
+      #   token['mint']
+      # end
+      if token['is_edition']
+        if token['parent'].present?
+          return token['parent'];
+        end
+        if token['image'].present?
+          return "edition-#{clean(token['image'])}"
+        end
       end
+      return token['mint']
     end
 
     def self.upload_batch(tokens, socket_id)
