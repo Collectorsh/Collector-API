@@ -3,8 +3,11 @@ import postgres from "../../db/postgres.js"
 import { connection } from "../utils/RpcConnection.js"
 import { Metaplex } from "@metaplex-foundation/js"
 import { verifyTokenBurned } from "./verifyTokenBurned.js"
+import { logtail } from "../utils/logtail.js"
+import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 
-const pause = (ms = 250) => new Promise(resolve => setTimeout(resolve, ms));
+
+const pause = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
 const metaplex = Metaplex.make(connection);
 
 export const backfillListings = async () => { 
@@ -16,7 +19,9 @@ export const backfillListings = async () => {
       listed_status: 'listed',
     })
     .catch((e) => {
-      console.log("Error fetching curation listings", e)
+      const err = parseError(e)
+      logtail.error(`Error fetching curation listings: ${err}`)
+      console.log("Error fetching curation listings", err)
     })
   
   //find onchain owner address,
@@ -40,7 +45,9 @@ export const backfillListings = async () => {
         .update({ nft_state: state, listed_status: "unlisted" })
         .where({ mint: listing.mint })
         .catch((e) => { 
-          console.log(`Error updating curation_listing ${list.mint}  burn state:`, e)
+          const err = parseError(e)
+          logtail.error(`Error updating curation_listing ${list.mint}  burn state: ${err}`)
+          console.log(`Error updating curation_listing ${list.mint}  burn state:`, err)
         })
       res.update = update;
       res.state = state;
@@ -81,7 +88,9 @@ export const backfillListings = async () => {
               })
               .where({ mint: listing.mint })
               .catch((e) => {
-                console.log(`Error updating curation_listing ${ listing.mint }  burn state:`, e)
+                const err = parseError(e)
+                logtail.error(`Error updating curation_listing ${ listing.mint }  burn state: ${err}`)
+                console.log(`Error updating curation_listing ${ listing.mint }  burn state:`, err)
               })
             res.update = update;
             res.state = state
@@ -133,7 +142,9 @@ export const backfillListings = async () => {
             })
             .where({ mint: listing.mint })
             .catch((e) => {
-              console.log(`Error updating curation_listing ${ listing.mint } owner:`, e)
+              const err = parseError(e)
+              logtail.error(`Error updating curation_listing ${ listing.mint } owner: ${err}`)
+              console.log(`Error updating curation_listing ${ listing.mint } owner:`, err)
             })
           res.update = update;
         }
@@ -161,7 +172,9 @@ export const backfillListings = async () => {
       }
       
     } catch (e) {
-      res.error = `Error fetching metadata ${ listing.mint }: ${e}`
+      const err = parseError(e)
+      logtail.warn(`Error fetching metadata ${ listing.mint }: ${err}`)
+      res.error = `Error fetching metadata ${ listing.mint }: ${err}`
     }
     return res
   }))
@@ -181,7 +194,9 @@ export const backfillIndexer = async () => {
       this.whereNot('nft_state', 'burned').orWhereNull('nft_state');
     })
     .catch((e) => {
-      console.log("Error fetching minted_indexer", e)
+      const err = parseError(e)
+      logtail.error(`Error fetching minted_indexer: ${err}`)
+      console.log("Error fetching minted_indexer", err)
     })
   
   const results = await Promise.all(indexes.map(async (indexToken) => {
@@ -203,7 +218,9 @@ export const backfillIndexer = async () => {
         .update({ nft_state: state,})
         .where({ mint: indexToken.mint })
         .catch((e) => {
-          console.log(`Error updating indexer item ${ indexToken.mint } burn state:`, e)
+          const err = parseError(e)
+          logtail.error(`Error updating indexer item ${ indexToken.mint } burn state: ${err}`)
+          console.log(`Error updating indexer item ${ indexToken.mint } burn state:`, err)
         })
       res.update = update;
       res.state = state;
@@ -250,7 +267,9 @@ export const backfillIndexer = async () => {
           })
           .where({ mint: indexToken.mint })
           .catch((e) => {
-            console.log(`Error updating indexer item ${ indexToken.mint } owner:`, e)
+            const err = parseError(e)
+            logtail.error(`Error updating indexer item ${ indexToken.mint } owner: ${err}`)
+            console.log(`Error updating indexer item ${ indexToken.mint } owner:`, err)
           })
         res.update = update;
       }
@@ -262,3 +281,72 @@ export const backfillIndexer = async () => {
 }
 
 
+export const updateIndexerEditions = async () => {
+  console.log("UPDATING INDEXER")
+  const indexes = await postgres('minted_indexer')
+    .select("*")
+    .where({is_edition: true})
+    .limit(5)
+    .catch((e) => {
+      console.log("Error fetching minted_indexer", e)
+    })
+  
+  // .where(function() {
+  //   this.whereNot('nft_state', 'burned').orWhereNull('nft_state')
+  // })
+
+  const results = await Promise.all(indexes.map(async (indexToken) => {
+    await pause();
+    let res = { mint: indexToken.mint }
+
+    const mintPublicKey = new PublicKey(indexToken.mint);
+    const metadata = await metaplex.nfts().findByMint({
+      mintAddress: mintPublicKey
+    }).catch((e) => { 
+      console.log("Error fetching metadata", e)
+    })
+
+    if (!metadata) return {
+      ...res,
+      state: "metadata-error",
+    };
+
+    const parentMetadataAddress = new PublicKey(metadata.edition?.parent)
+
+    //update max supply for editions
+    if (!indexToken.max_supply && parentMetadataAddress) {
+      res.parent = parentMetadataAddress.toString();
+      res.state = "updating"
+      
+      console.log("UPDATING INDEXER ITEM", indexToken.mint)
+      try {
+        
+        // TODO get max supply from parent
+
+        // const update = await postgres('minted_indexer')
+        //   .update({
+        //     max_supply: maxSupply,
+        //   })
+        //   .where({ mint: indexToken.mint })
+        //   .catch((e) => {
+        //     console.log(`Error updating indexer item ${ indexToken.mint }`, e)
+        //   })
+        
+        res = {
+          ...res,
+          // parentMetadata,
+          metadata,
+          state: "finished updated",
+          // update: update,
+          // max_supply: maxSupply,
+        }
+      } catch (e) {
+        console.log("Error fetching parent metadata", e)
+      }
+    }
+    return res
+  }))
+
+
+  return results.filter(res => res.state)
+}

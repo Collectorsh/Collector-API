@@ -6,6 +6,7 @@ class KeyHashController < ApplicationController
 
     render json: { status: 'success', msg: 'KeyHash created' }
   rescue StandardError => e
+    Rails.logger.error("Error creating KeyHash: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -13,6 +14,7 @@ class KeyHashController < ApplicationController
     key_hash = KeyHash.find_by(name: params[:name])
     render json: key_hash
   rescue StandardError => e
+    Rails.logger.error("Error getting KeyHash: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
