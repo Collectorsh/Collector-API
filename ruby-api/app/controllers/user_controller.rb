@@ -361,17 +361,15 @@ class UserController < ApplicationController
     render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
-  def get_users_with_tokens
-    return render json: { status: 'error', msg: 'tokens missing' } unless params[:tokens]
+  def get_user_by_address
+    return render json: { status: 'error', msg: 'Address missing' } unless params[:address]
 
-    # map tokens to addresses from artist_address
-    token_addresses = params[:tokens].map { |t| t['artist_address'] }.uniq
+    user = User.find_by("public_keys LIKE '%#{params[:address]}%'")
+    return render json: { status: 'error', msg: 'User not found' } unless user
 
-    users
-
+    render json: { status: 'success', user: user.public_info}
   rescue StandardError => e
-    Rails.logger.error("Error getting users with tokens: #{e.message}")
-    render json: { error: "Error getting users with tokens: #{e.message}" }, status: :internal_server_error
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
   def save_curations_order
