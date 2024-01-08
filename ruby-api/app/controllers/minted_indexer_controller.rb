@@ -12,7 +12,7 @@ class MintedIndexerController < ApplicationController
     owner_id = params[:owner_id] || (owner_address.present? ? User.find_by("public_keys LIKE ?", "%#{owner_address}%")&.id : nil)
     artist_id = params[:artist_id] || (artist_address.present? ? User.find_by("public_keys LIKE ?", "%#{artist_address}%")&.id : nil)
 
-    minted_indexer = MintedIndexer.create({
+    minted_indexer = MintedIndexer.find_or_create_by({
       mint: token['mint'],
       name: token['name'],
       owner_id: owner_id,
