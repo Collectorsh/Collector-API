@@ -7,4 +7,8 @@ class NotificationsChannel < ApplicationCable::Channel
   def unsubscribed
     # Any cleanup needed when channel is unsubscribed
   end
+
+  rescue RuntimeError => e
+    Rails.logger.error("RuntimeError in Cable notifications: #{e.message} - Backtrace: #{e.backtrace.join("$/")}")
+  end
 end
