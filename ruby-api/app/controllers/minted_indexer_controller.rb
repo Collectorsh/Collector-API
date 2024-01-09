@@ -12,27 +12,33 @@ class MintedIndexerController < ApplicationController
     owner_id = params[:owner_id] || (owner_address.present? ? User.find_by("public_keys LIKE ?", "%#{owner_address}%")&.id : nil)
     artist_id = params[:artist_id] || (artist_address.present? ? User.find_by("public_keys LIKE ?", "%#{artist_address}%")&.id : nil)
 
-    minted_indexer = MintedIndexer.create({
-      mint: token['mint'],
-      name: token['name'],
-      owner_id: owner_id,
-      owner_address: owner_address,
-      artist_id: artist_id,
-      artist_address: artist_address,
-      animation_url: token['animation_url'],
-      image: token['image'],
-      description: token['description'],
-      primary_sale_happened: token['primary_sale_happened'],
-      is_edition: token['is_edition'],
-      parent: token['parent'],
-      is_master_edition: token['is_master_edition'],
-      supply: token['supply'],
-      max_supply: token['max_supply'],
-      creators: token['creators'],
-      files: token['files'],
-      royalties: token['royalties'],
-      is_collection_nft: token['is_collection_nft'],
-    })
+    # Attempt to find the record
+    minted_indexer = MintedIndexer.find_by(mint: token['mint'])
+
+    # If not found, create a new record
+    unless minted_indexer
+      minted_indexer = MintedIndexer.create({
+        mint: token['mint'],
+        name: token['name'],
+        owner_id: owner_id,
+        owner_address: owner_address,
+        artist_id: artist_id,
+        artist_address: artist_address,
+        animation_url: token['animation_url'],
+        image: token['image'],
+        description: token['description'],
+        primary_sale_happened: token['primary_sale_happened'],
+        is_edition: token['is_edition'],
+        parent: token['parent'],
+        is_master_edition: token['is_master_edition'],
+        supply: token['supply'],
+        max_supply: token['max_supply'],
+        creators: token['creators'],
+        files: token['files'],
+        royalties: token['royalties'],
+        is_collection_nft: token['is_collection_nft'],
+      })
+    end
 
     if minted_indexer.errors.any?
       Rails.logger.error("Failed to save token index for #{token['mint']}: #{minted_indexer.errors.full_messages.join(", ")}")
@@ -58,7 +64,10 @@ class MintedIndexerController < ApplicationController
 
     minted_indexer = MintedIndexer.find_by(mint: token['mint'])
 
-    if minted_indexer.update({
+    if minted_indexer.nil?
+      Rails.logger.error("No MintedIndexer record found for mint: #{token['mint']}")
+      return render json: { status: 'error', msg: 'MintedIndexer record not found' }
+    elsif minted_indexer.update({
       name: token['name'],
       owner_id: owner_id,
       owner_address: owner_address,
@@ -84,7 +93,7 @@ class MintedIndexerController < ApplicationController
       return render json: { status: 'error', msg: 'token not upddated' } 
     end
   rescue StandardError => e
-    Rails.logger.error("Failed to update token index metadata}: #{e.message}")
+    Rails.logger.error("Failed to update token index metadata: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
@@ -122,9 +131,12 @@ class MintedIndexerController < ApplicationController
   end
 
   def get_by_mint
-    minted_indexer = MintedIndexer.find_by(mint: params[:mint])
-      .where.not(nft_state: "burned")
-      .or(MintedIndexer.where(mint: params[:mint], nft_state: nil))
+    # minted_indexer = MintedIndexer.find_by(mint: params[:mint]).where.not(nft_state: "burned").or(MintedIndexer.where(mint: params[:mint], nft_state: nil))
+    minted_indexer = MintedIndexer.where(mint: params[:mint])
+                                  .where.not(nft_state: "burned")
+                                  .or(MintedIndexer.where(mint: params[:mint], nft_state: nil))
+                                  .first
+
     
     if minted_indexer
       return render json: { status: 'success', mint: minted_indexer }

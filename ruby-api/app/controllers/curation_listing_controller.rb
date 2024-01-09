@@ -17,23 +17,33 @@ class CurationListingController < ApplicationController
 
       is_master_edition = token['is_master_edition']
 
-
-      # just do the check on listing
-      # if is_master_edition
-      #   #check if master edition listing already exists and is listed
-      #   # if so reject submission
-      #   existing_listing = CurationListing.find_by(mint: token['mint'], listed_status: "listed")
-      #   if existing_listing 
-      #     puts "Master Edition already listed: #{existing_listing.mint}"
-      #     errors << {mint: existing_listing.mint, message: "Master Edition already listed: #{existing_listing.mint}"} 
-      #     next;
-      #   end
-      # end
-
       owner_address = token['owner_address']
       artist_address = token['artist_address']
       owner_id = params[:owner_id] || (owner_address.present? ? User.find_by("public_keys LIKE ?", "%#{owner_address}%")&.id : nil)
       artist_id = params[:artist_id] || (artist_address.present? ? User.find_by("public_keys LIKE ?", "%#{artist_address}%")&.id : nil)
+
+      temp_artist_name = nil
+      if token["artist_name"].present?
+        temp_artist_name = token["artist_name"]
+      elsif artist_id.nil? && artist_address.present? 
+        url = "https://api.mallow.art/users/#{artist_address}"
+        headers = {
+          "X-Api-Key" => ENV['MALLOW_API_KEY'],
+        }
+
+        response = HTTParty.get(url, headers: headers)
+
+        parsed_response = response.parsed_response
+
+        puts "parsed_response: #{parsed_response}"
+
+        # Access the displayName property
+        display_name = parsed_response["displayName"]
+        username = parsed_response["username"]
+
+        temp_artist_name = display_name || username
+
+      end
   
       listing = CurationListing.create({
         curation_id: params[:curation_id],
@@ -54,7 +64,8 @@ class CurationListingController < ApplicationController
         supply: token['supply'],
         parent: token['parent'],
         max_supply: token['max_supply'],
-        files: token['files']
+        files: token['files'],
+        temp_artist_name:  temp_artist_name 
       })
 
       if listing.errors.any?

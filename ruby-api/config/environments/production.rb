@@ -111,6 +111,6 @@ Rails.application.configure do
   # config.active_record.database_resolver = ActiveRecord::Middleware::DatabaseSelector::Resolver
   # config.active_record.database_resolver_context = ActiveRecord::Middleware::DatabaseSelector::Resolver::Session
 
-  config.action_cable.allowed_request_origins = ['http://localhost:3000', 'https://collector.sh']
+  config.action_cable.allowed_request_origins = ['http://localhost:3000', 'https://collector.sh', 'https://collector-testing-kvak9.ondigitalocean.app']
   config.active_job.queue_adapter = :delayed_job
 end
