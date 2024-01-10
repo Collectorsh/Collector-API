@@ -205,6 +205,31 @@ class CurationListingController < ApplicationController
           master_edition_market_address: token.master_edition_market_address
         }
       })
+
+      #if this is a collector listing, also update associated listings in artist curations
+      begin
+        if token.curation.curation_type == "collector"
+          artistListings = CurationListing.includes(:curation)
+                                      .where(curation: { curation_type: "artist" })
+                                      .where(mint: token.mint)
+
+          artistListings.each do |artistListing|
+            unless artistListing.update(
+              listed_status: "listed", 
+              buy_now_price: buy_now_price, 
+              listing_receipt: listing_receipt,
+              # master_edition_market_address not needed cause wont be in artist listings
+            )
+              Rails.logger.error("Failed to update artist listing for #{artistListing.mint}: #{artistListing.errors.full_messages.join(", ")}")
+            end
+          end
+        end
+      rescue StandardError => e
+        Rails.logger.error("Error fetching listings with artist curations: #{e.message}")
+      end
+
+
+
       return render json: { status: 'success', msg: 'Token listing updated' }
     else 
       puts "FAILED TO SAVE TOKEN: #{token.errors.full_messages.join(", ")}"
@@ -212,9 +237,6 @@ class CurationListingController < ApplicationController
       return render json: { status: 'error', msg: 'Failed to update token listing' }, status: :unprocessable_entity
     end
   rescue StandardError => e
-    puts "Error updating listing #{token.mint}: #{e.message}"
-    # Rails.logger.error("Error updating listing: #{e.message}")
-    # Rails.logger.error(e.backtrace.join("\n"))
     Rails.logger.error(["Error updating listing: #{e.message} - Backtrace: ", *e.backtrace].join("$/"))
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
@@ -249,6 +271,7 @@ class CurationListingController < ApplicationController
 
     else
       return render json: { status: 'error', msg: 'Token already Sold' } unless token.listed_status != "sold"
+
       if token.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
         ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
           message: 'Listing Update', 
@@ -259,6 +282,24 @@ class CurationListingController < ApplicationController
             listing_receipt: nil
           }
         })
+
+        #if this is a collector listing, also update associated listings in artist curations
+      begin
+        if token.curation.curation_type == "collector"
+          artistListings = CurationListing.includes(:curation)
+                                      .where(curation: { curation_type: "artist" })
+                                      .where(mint: token.mint)
+
+          artistListings.each do |artistListing|
+            unless artistListing.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
+              Rails.logger.error("Failed to cancle artist listing for #{artistListing.mint}: #{artistListing.errors.full_messages.join(", ")}")
+            end
+          end
+        end
+      rescue StandardError => e
+        Rails.logger.error("Error fetching listings with artist curations: #{e.message}")
+      end
+
         render json: { status: 'success', msg: 'Token listing canceled' }
       else
         Rails.logger.error("Failed to cancel listing for #{token.mint}: #{token.errors.full_messages.join(", ")}")
@@ -266,8 +307,6 @@ class CurationListingController < ApplicationController
       end
     end
   rescue StandardError => e
-    # Rails.logger.error("Error canceling listing: #{e.message}")
-    # Rails.logger.error(e.backtrace.join("\n"))
     Rails.logger.error(["Error canceling listing: #{e.message} - Backtrace: ", *e.backtrace].join("$/"))
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
