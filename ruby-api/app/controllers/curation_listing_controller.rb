@@ -292,12 +292,12 @@ class CurationListingController < ApplicationController
 
           artistListings.each do |artistListing|
             unless artistListing.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
-              Rails.logger.error("Failed to cancle artist listing for #{artistListing.mint}: #{artistListing.errors.full_messages.join(", ")}")
+              Rails.logger.error("Failed to cancel artist listing for #{artistListing.mint}: #{artistListing.errors.full_messages.join(", ")}")
             end
           end
         end
       rescue StandardError => e
-        Rails.logger.error("Error fetching listings with artist curations: #{e.message}")
+        Rails.logger.error("Error fetching listings to cancel with artist curations: #{e.message}")
       end
 
         render json: { status: 'success', msg: 'Token listing canceled' }
