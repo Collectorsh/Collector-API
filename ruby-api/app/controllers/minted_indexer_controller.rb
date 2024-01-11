@@ -49,8 +49,7 @@ class MintedIndexerController < ApplicationController
     end
 
   rescue StandardError => e
-    # Rails.logger.error("Failed to create token index")
-    Rails.logger.error("Failed to create token index: #{e.message} - Backtrace: #{e.backtrace.join("$/")}")
+    Rails.logger.error("Failed to create token index: #{e.message}")
 
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
