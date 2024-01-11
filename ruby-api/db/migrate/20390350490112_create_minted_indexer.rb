@@ -21,6 +21,7 @@ class CreateMintedIndexer < ActiveRecord::Migration[6.1]
       t.integer :royalties
       t.boolean :is_collection_nft
       t.string :nft_state
+      t.boolean :compressed
 
       t.timestamps
     end
