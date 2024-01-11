@@ -65,7 +65,8 @@ class CurationListingController < ApplicationController
         parent: token['parent'],
         max_supply: token['max_supply'],
         files: token['files'],
-        temp_artist_name:  temp_artist_name 
+        temp_artist_name:  temp_artist_name,
+        compressed: token['compressed'],
       })
 
       if listing.errors.any?

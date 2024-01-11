@@ -37,6 +37,7 @@ class MintedIndexerController < ApplicationController
         files: token['files'],
         royalties: token['royalties'],
         is_collection_nft: token['is_collection_nft'],
+        compressed: token['compressed'],
       })
     end
 
