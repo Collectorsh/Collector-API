@@ -111,7 +111,15 @@ class ImagesController < ApplicationController
     puts "Uploading video for #{token['mint']}"
 
     cld_id = ImageUploadService.get_token_cld_id(token)
-    response = Cloudinary::Uploader.upload_large(video_url, resource_type: :video, public_id: "video/#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", overwrite: true, invalidate: true)
+    response = Cloudinary::Uploader.upload_large(
+      video_url, 
+      :resource_type => "video", 
+      :public_id => "video/#{ENV['CLOUDINARY_NFT_FOLDER']}/#{cld_id}", 
+      :overwrite => true, 
+      :invalidate => true,
+      :timeout => 240,
+      :chunk_size => 3000000,
+    )
 
     return render json: { public_id: response['public_id'] }, status: :ok
   rescue => e
