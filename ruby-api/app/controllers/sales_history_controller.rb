@@ -23,75 +23,79 @@ class SalesHistoryController < ApplicationController
     buyer_id = params[:buyer_id] || (buyer_address.present? ? User.find_by("public_keys LIKE ?", "%#{buyer_address}%")&.id : nil)
     seller_id = params[:seller_id] || (seller_address.present? ? User.find_by("public_keys LIKE ?", "%#{seller_address}%")&.id : nil)
   
-    if is_master_edition
-      
-      listing = listings[0]
-      new_supply = listing.supply + params[:editions_minted].to_i
-      status = (new_supply >= listing.max_supply) ? "sold" : "listed"
+    begin
+      if is_master_edition
+        
+        listing = listings[0]
+        new_supply = listing.supply + params[:editions_minted].to_i
+        status = (new_supply >= listing.max_supply) ? "sold" : "listed"
 
-      if listing.update(
-        listed_status: status, 
-        supply: new_supply
-      )
-        ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
-          message: 'Listing Update', 
-          data: { 
-            mint: listing.mint, 
-            listed_status: listing.listed_status,
-            supply: listing.supply
-          }
-        })
-      else
-        Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
-        puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
-      end
-
-      # update minted_indexer if found
-      minted_indexer = MintedIndexer.find_by(mint: mint)
-
-      if minted_indexer && !minted_indexer.update(supply: new_supply)
-        Rails.logger.error("Record Master Editions Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
-        puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
-      end
-
-    else
-      # Go through all listings in case the token is listined in multiple curations
-      listings.each do |listing|
         if listing.update(
-          listed_status: "sold", 
-          owner_address: buyer_address, 
-          owner_id: buyer_id,
-          primary_sale_happened: true,
-          listing_receipt: nil
+          listed_status: status, 
+          supply: new_supply
         )
           ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
             message: 'Listing Update', 
             data: { 
               mint: listing.mint, 
               listed_status: listing.listed_status,
-              listing_receipt: listing.listing_receipt,
-              owner_address: listing.owner_address,
-              owner_id: listing.owner_id,
-              primary_sale_happened: listing.primary_sale_happened
+              supply: listing.supply
             }
           })
         else
-          Rails.logger.error("Record Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
-          puts "Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}"
+          Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
+          puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
         end
 
         # update minted_indexer if found
-        minted_indexer = MintedIndexer.find_by(mint: listing.mint)
+        minted_indexer = MintedIndexer.find_by(mint: mint)
 
-        if minted_indexer && !minted_indexer.update(
-          owner_address: buyer_address, 
-          owner_id: buyer_id,
-          primary_sale_happened: true,
-        )
-          Rails.logger.error("Record Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
+        if minted_indexer && !minted_indexer.update(supply: new_supply)
+          Rails.logger.error("Record Master Editions Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
           puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
         end
+
+      else
+        # Go through all listings in case the token is listined in multiple curations
+        listings.each do |listing|
+          if listing.update(
+            listed_status: "sold", 
+            owner_address: buyer_address, 
+            owner_id: buyer_id,
+            primary_sale_happened: true,
+            listing_receipt: nil
+          )
+            ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+              message: 'Listing Update', 
+              data: { 
+                mint: listing.mint, 
+                listed_status: listing.listed_status,
+                listing_receipt: listing.listing_receipt,
+                owner_address: listing.owner_address,
+                owner_id: listing.owner_id,
+                primary_sale_happened: listing.primary_sale_happened
+              }
+            })
+          else
+            Rails.logger.error("Record Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
+            puts "Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}"
+          end
+
+          # update minted_indexer if found
+          minted_indexer = MintedIndexer.find_by(mint: listing.mint)
+
+          if minted_indexer && !minted_indexer.update(
+            owner_address: buyer_address, 
+            owner_id: buyer_id,
+            primary_sale_happened: true,
+          )
+            Rails.logger.error("Record Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
+            puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
+          end
+        end
       end
+    rescue StandardError => e
+      Rails.logger.error("Error in record sale, failed to updating listings: #{e.message}")
     end
   
     recorded_sale = SalesHistory.create(

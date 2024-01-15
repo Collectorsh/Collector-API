@@ -26,6 +26,7 @@ class CreateCurationListings < ActiveRecord::Migration[6.1]
       t.json :files
       t.string :nft_state
       t.string :temp_artist_name
+      t.boolean :compressed
 
       t.timestamps
     end

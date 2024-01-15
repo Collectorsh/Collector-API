@@ -281,6 +281,7 @@ export const backfillIndexer = async () => {
 }
 
 
+//Incomplete, trying to get max supply from parent metadata
 export const updateIndexerEditions = async () => {
   console.log("UPDATING INDEXER")
   const indexes = await postgres('minted_indexer')
