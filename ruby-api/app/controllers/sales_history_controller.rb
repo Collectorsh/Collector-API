@@ -151,10 +151,10 @@ class SalesHistoryController < ApplicationController
     modified_records = records.map do |record|
       {
         **record.attributes.symbolize_keys,
-        buyer: record.buyer.public_info,
-        seller: record.seller.public_info,
-        artist: record.artist.public_info,
-        curation: record.curation.basic_info,
+        buyer: record.buyer&.public_info,
+        seller: record.seller&.public_info,
+        artist: record.artist&.public_info,
+        curation: record.curation&.basic_info,
       }
     end
 

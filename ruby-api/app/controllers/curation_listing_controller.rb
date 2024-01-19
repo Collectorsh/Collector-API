@@ -324,6 +324,29 @@ class CurationListingController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def get_listings_by_parent
+    listings = CurationListing.includes(:curation).where(parent: params[:parent], listed_status: "listed")
+    # include full curation with listings
+    listings = listings.map do |listing| 
+      curation = listing.curation.condensed
+      
+      listing = listing.as_json
+
+      listing['curation'] = curation
+
+      listing
+    end
+    
+    if listings
+      render json: { status: 'success', listings: listings}
+    else
+      render json: { status: 'error', msg: 'Listings not found' }
+    end
+  rescue StandardError => e
+    Rails.logger.error("Error getting listings by parent: #{e.message}")
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
   private 
   
   def get_authorized_user
