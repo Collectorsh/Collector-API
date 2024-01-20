@@ -56,27 +56,6 @@ class SalesHistoryController < ApplicationController
           end
         end
         
-        # listing = listings[0]
-        # new_supply = listing.supply + params[:editions_minted].to_i
-        # status = (new_supply >= listing.max_supply) ? "sold" : "listed"
-
-        # if listing.update(
-        #   listed_status: status, 
-        #   supply: new_supply
-        # )
-        #   ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
-        #     message: 'Listing Update', 
-        #     data: { 
-        #       mint: listing.mint, 
-        #       listed_status: listing.listed_status,
-        #       supply: listing.supply
-        #     }
-        #   })
-        # else
-        #   Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
-        #   puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
-        # end
-
         # update minted_indexer if found
         minted_indexer = MintedIndexer.find_by(mint: mint)
 
