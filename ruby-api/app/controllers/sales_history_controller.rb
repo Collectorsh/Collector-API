@@ -4,7 +4,7 @@ class SalesHistoryController < ApplicationController
   def record_sale
     user = @authorized_user
 
-    listings = CurationListing.where(mint: params[:token_mint])
+    listings = CurationListing.includes(:curation).where(mint: params[:token_mint])
 
     if listings.empty?
       puts "Listing not found for mint: #{params[:token_mint]}"
@@ -25,28 +25,37 @@ class SalesHistoryController < ApplicationController
   
     begin
       if is_master_edition
-        
-        listing = listings[0]
-        new_supply = listing.supply + params[:editions_minted].to_i
-        status = (new_supply >= listing.max_supply) ? "sold" : "listed"
 
-        if listing.update(
-          listed_status: status, 
-          supply: new_supply
-        )
-          ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
-            message: 'Listing Update', 
-            data: { 
-              mint: listing.mint, 
-              listed_status: listing.listed_status,
-              supply: listing.supply
-            }
-          })
-        else
-          Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
-          puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
+        listings.each do |listing|
+          new_supply = listing.supply + params[:editions_minted].to_i
+          status = listing.listed_status
+
+          if listing.listed_status == "listed" && new_supply >= listing.max_supply
+            status = "sold"
+          end
+
+          if listing.update(
+            listed_status: status, 
+            supply: new_supply
+          )
+            begin 
+              ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+                message: 'Listing Update', 
+                data: { 
+                  mint: listing.mint, 
+                  listed_status: listing.listed_status,
+                  supply: listing.supply
+                }
+              })
+            rescue StandardError => e
+              Rails.logger.error("Websocket Error: record_sale (ME) - notifications_listings_#{listing.curation.name}: #{e.message}")
+            end
+          else
+            Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
+            puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
+          end
         end
-
+        
         # update minted_indexer if found
         minted_indexer = MintedIndexer.find_by(mint: mint)
 
@@ -65,17 +74,22 @@ class SalesHistoryController < ApplicationController
             primary_sale_happened: true,
             listing_receipt: nil
           )
-            ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
-              message: 'Listing Update', 
-              data: { 
-                mint: listing.mint, 
-                listed_status: listing.listed_status,
-                listing_receipt: listing.listing_receipt,
-                owner_address: listing.owner_address,
-                owner_id: listing.owner_id,
-                primary_sale_happened: listing.primary_sale_happened
-              }
-            })
+            begin
+              ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+                message: 'Listing Update', 
+                data: { 
+                  mint: listing.mint, 
+                  listed_status: listing.listed_status,
+                  listing_receipt: listing.listing_receipt,
+                  owner_address: listing.owner_address,
+                  owner_id: listing.owner_id,
+                  primary_sale_happened: listing.primary_sale_happened
+                }
+              })
+            rescue StandardError => e
+              Rails.logger.error("Websocket Error: record_sale - notifications_listings_#{listing.curation.name}: #{e.message}")
+            end
+
           else
             Rails.logger.error("Record Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
             puts "Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}"
