@@ -85,7 +85,7 @@ export const uploadMetadata = async (req, res) => {
         })
       }
 
-      const { uri } = await bundlrMetaplex
+      const metadataRes = await bundlrMetaplex
         .nfts()
         .uploadMetadata({
           name,
@@ -101,8 +101,11 @@ export const uploadMetadata = async (req, res) => {
             creators
           }
         });
+      
+      const uri = metadataRes.uri
+      const metadata = metadataRes.metadata
 
-      res.status(200).json({ uri })
+      res.status(200).json({ uri, metadata })
     }
 
     if (!altMediaFile) {

@@ -1,5 +1,5 @@
 class CurationListingController < ApplicationController
-  before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens, :delete_multiple_submissions]
+  before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens, :delete_multiple_submissions, :update_edition_supply]
   before_action :token_from_confirmed_owner, only: [:update_listing, :cancel_listing, :delete_submission]
 
   def submit_tokens
@@ -175,6 +175,55 @@ class CurationListingController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def update_edition_supply
+    user = @authorized_user # just using to confirm action comes from a valid user
+
+    token = params[:token]
+    supply = params[:supply]
+
+    return render json: { status: 'error', msg: 'No params sent' } unless token && supply
+    
+    listing = CurationListing.includes(:curation).find_by(mint: token['mint'], master_edition_market_address: token['master_edition_market_address'])
+    
+    return render json: { status: 'error', msg: 'Listing not found' } unless listing
+
+    status = listing.listed_status
+
+    if listing.listed_status == "listed" && supply >= listing.max_supply
+      status = "sold"
+    end
+
+    if listing.update(supply: supply, listed_status: status)
+      begin
+        ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+          message: 'Listing Update', 
+            data: { 
+              mint: listing.mint, 
+              listed_status: listing.listed_status,
+              supply: listing.supply
+            }
+          }
+        )
+      rescue StandardError => e
+        Rails.logger.error("Websocket Error: update_edition_supply - notifications_listings_#{token.curation.name}: #{e.message}")
+      end
+
+      minted_indexer = MintedIndexer.find_by(mint: listing.mint)
+      if minted_indexer && !minted_indexer.update(supply: supply)
+        Rails.logger.error("Update edition supply error. Failed to update minted_indexer for #{listing.mint}: #{minted_indexer.errors.full_messages.join(", ")}")
+      end
+
+      render json: { status: 'success', msg: 'Edition supply updated', listed_status: status }
+    else
+      Rails.logger.error("Failed to update edition supply for #{token['mint']}: #{listing.errors.full_messages.join(", ")}")
+      render json: { status: 'error', msg: 'Failed to update edition supply' }, status: :unprocessable_entity
+    end
+
+  rescue StandardError => e
+    Rails.logger.error("Error updating edition supply: #{e.message}")
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
   def update_listing
     token = @authorized_listing
 
@@ -196,16 +245,20 @@ class CurationListingController < ApplicationController
       listing_receipt: listing_receipt,
       master_edition_market_address: master_edition_market_address
     )
-      ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
-        message: 'Listing Update', 
-        data: { 
-          mint: token.mint, 
-          listed_status: token.listed_status,
-          buy_now_price: token.buy_now_price,
-          listing_receipt: token.listing_receipt,
-          master_edition_market_address: token.master_edition_market_address
-        }
-      })
+      begin
+        ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+          message: 'Listing Update', 
+          data: { 
+            mint: token.mint, 
+            listed_status: token.listed_status,
+            buy_now_price: token.buy_now_price,
+            listing_receipt: token.listing_receipt,
+            master_edition_market_address: token.master_edition_market_address
+          }
+        })
+      rescue StandardError => e
+        Rails.logger.error("Websocket Error: update_listing - notifications_listings_#{token.curation.name}: #{e.message}")
+      end
 
       #if this is a collector listing, also update associated listings in artist curations
       begin
@@ -247,16 +300,22 @@ class CurationListingController < ApplicationController
 
     if token.is_master_edition
       status = token.supply >= token.max_supply ? "master-edition-closed" : "unlisted"
-      if token.update(listed_status: status, primary_sale_happened: true, buy_now_price: nil)
-        ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
-          message: 'Listing Update', 
-          data: { 
-            mint: token.mint, 
-            listed_status: token.listed_status,
-            buy_now_price: token.buy_now_price,
-            primary_sale_happened: token.primary_sale_happened
-          }
-        })
+      if token.update(listed_status: status, primary_sale_happened: true)
+
+        begin
+          ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+            message: 'Listing Update', 
+            data: { 
+              mint: token.mint, 
+              listed_status: token.listed_status,
+              buy_now_price: token.buy_now_price,
+              primary_sale_happened: token.primary_sale_happened
+            }
+          })
+        rescue StandardError => e
+          Rails.logger.error("Websocket Error: cancel_listing (ME) - notifications_listings_#{token.curation.name}: #{e.message}")
+        end
+        
         render json: { status: 'success', msg: 'Master Edition listing canceled' }
       else
         Rails.logger.error("Failed to cancel Master Edition listing for #{token.mint}: #{token.errors.full_messages.join(", ")}")
@@ -274,32 +333,36 @@ class CurationListingController < ApplicationController
       return render json: { status: 'error', msg: 'Token already Sold' } unless token.listed_status != "sold"
 
       if token.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
-        ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
-          message: 'Listing Update', 
-          data: { 
-            mint: token.mint, 
-            listed_status: token.listed_status,
-            buy_now_price: token.buy_now_price,
-            listing_receipt: nil
-          }
-        })
+        begin
+          ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+            message: 'Listing Update', 
+            data: { 
+              mint: token.mint, 
+              listed_status: token.listed_status,
+              buy_now_price: token.buy_now_price,
+              listing_receipt: nil
+            }
+          })
+        rescue StandardError => e
+          Rails.logger.error("Websocket Error: cancel_listing - notifications_listings_#{token.curation.name}: #{e.message}")
+        end
 
         #if this is a collector listing, also update associated listings in artist curations
-      begin
-        if token.curation.curation_type == "collector"
-          artistListings = CurationListing.includes(:curation)
-                                      .where(curation: { curation_type: "artist" })
-                                      .where(mint: token.mint)
+        begin
+          if token.curation.curation_type == "collector"
+            artistListings = CurationListing.includes(:curation)
+                                        .where(curation: { curation_type: "artist" })
+                                        .where(mint: token.mint)
 
-          artistListings.each do |artistListing|
-            unless artistListing.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
-              Rails.logger.error("Failed to cancel artist listing for #{artistListing.mint}: #{artistListing.errors.full_messages.join(", ")}")
+            artistListings.each do |artistListing|
+              unless artistListing.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
+                Rails.logger.error("Failed to cancel artist listing for #{artistListing.mint}: #{artistListing.errors.full_messages.join(", ")}")
+              end
             end
           end
+        rescue StandardError => e
+          Rails.logger.error("Error fetching listings to cancel with artist curations: #{e.message}")
         end
-      rescue StandardError => e
-        Rails.logger.error("Error fetching listings to cancel with artist curations: #{e.message}")
-      end
 
         render json: { status: 'success', msg: 'Token listing canceled' }
       else
