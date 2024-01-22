@@ -1,5 +1,5 @@
 class CurationListingController < ApplicationController
-  before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens, :delete_multiple_submissions, :update_edition_supply]
+  before_action :get_authorized_user, only: [:submit_single_token, :submit_tokens, :delete_multiple_submissions, :update_edition_supply, :update_listing_status]
   before_action :token_from_confirmed_owner, only: [:update_listing, :cancel_listing, :delete_submission]
 
   def submit_tokens
@@ -223,6 +223,79 @@ class CurationListingController < ApplicationController
     Rails.logger.error("Error updating edition supply: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
+
+
+  def update_listing_status
+    user = @authorized_user # just using to confirm action comes from a valid user
+
+    token = CurationListing.includes(:curation).find_by(mint: params[:token_mint], curation_id: params[:curation_id])
+
+    if !token.present?
+      puts "Token not found: #{params[:token_mint]}"
+      return render json: { status: 'error', msg: 'Token not found' }
+    end
+
+    owner_address = params[:owner_address]
+    owner_id = params[:owner_id] || (owner_address.present? ? User.find_by("public_keys LIKE ?", "%#{owner_address}%")&.id : nil)
+
+    if token.update(
+      owner_id: owner_id,
+      owner_address: owner_address,
+      listed_status: params[:listed_status], 
+      nft_state: params[:nft_state]
+    )
+      begin
+        ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+          message: 'Listing Update', 
+          data: { 
+            mint: token.mint, 
+            listed_status: token.listed_status,
+            owner_address: token.owner_address,
+            nft_state: token.nft_state
+          }
+        })
+      rescue StandardError => e
+        Rails.logger.error("Websocket Error: update_listing_status - notifications_listings_#{token.curation.name}: #{e.message}")
+      end
+
+      #if this is a collector listing, also update associated listings in artist curations
+      begin
+        if token.curation.curation_type == "collector"
+          artistListings = CurationListing.includes(:curation)
+                                      .where(curation: { curation_type: "artist" })
+                                      .where(mint: token.mint)
+
+          artistListings.each do |artistListing|
+            unless artistListing.update(
+              listed_status: params[:listed_status], 
+              owner_id: owner_id,
+              owner_address: owner_address,
+              nft_state: params[:nft_state]
+            )
+              Rails.logger.error("Failed to update artist listing for #{artistListing.mint}: #{artistListing.errors.full_messages.join(", ")}")
+            end
+          end
+        end
+      rescue StandardError => e
+        Rails.logger.error("Error fetching listings with artist curations: #{e.message}")
+      end
+
+      render json: { status: 'success', msg: 'Token listing status updated' }
+    else
+      Rails.logger.error("Failed to update listing status for #{token.mint}: #{token.errors.full_messages.join(", ")}")
+      render json: { status: 'error', msg: 'Failed to update token listing status' }, status: :unprocessable_entity
+    end
+
+
+
+
+
+
+  rescue StandardError => e
+    Rails.logger.error("Error updating listing status: #{e.message}")
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
 
   def update_listing
     token = @authorized_listing
