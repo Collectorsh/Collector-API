@@ -46,5 +46,6 @@ module SolstaApi
     config.yearly = 8000000000
 
     config.logger = Logtail::Logger.create_default_logger("rryqu8e9b6a7mfD9ZDr9gxdk")
+
   end
 end
