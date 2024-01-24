@@ -65,3 +65,4 @@ gem 'actioncable'
 gem 'redis', '~> 4.0'
 
 gem 'logtail-rails', '~> 0.2.6'
+gem "highlight_io"

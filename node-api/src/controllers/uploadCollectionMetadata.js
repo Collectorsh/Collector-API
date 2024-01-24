@@ -60,7 +60,7 @@ export const uploadCollectionMetadata = async (req, res) => {
         uri: imageUriWithExtension
       }]
 
-      const { uri } = await bundlrMetaplex
+      const metadataRes = await bundlrMetaplex
         .nfts()
         .uploadMetadata({
           name: collectionName,
@@ -70,8 +70,11 @@ export const uploadCollectionMetadata = async (req, res) => {
             files,
           }
         });
-
-      res.status(200).json({ uri })
+      
+      const uri = metadataRes.uri
+      const metadata = metadataRes.metadata
+      
+      res.status(200).json({ uri, metadata })
     }
 
     fs.readFile(imageFile.path, async (err, data) => {

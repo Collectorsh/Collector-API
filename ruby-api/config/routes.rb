@@ -195,6 +195,8 @@ Rails.application.routes.draw do
     post '/update_listing_metadata', to: 'curation_listing#update_listing_metadata'
     post '/get_listed_item', to: 'curation_listing#get_listed_item'
     post '/get_listings_by_parent', to: 'curation_listing#get_listings_by_parent'
+    post '/update_edition_supply', to: 'curation_listing#update_edition_supply'
+    post '/update_listing_status', to: 'curation_listing#update_listing_status'
   end
 
   scope :sales_history do
