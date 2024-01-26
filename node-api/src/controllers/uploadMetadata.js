@@ -8,6 +8,7 @@ import { formatRSAPrivateKey } from '../utils/formatRSA.js';
 import { connection } from "../utils/RpcConnection.js";
 import postgres from "../../db/postgres.js";
 import { logtail } from "../utils/logtail.js";
+import { parseError } from "../utils/misc.js";
 
 //Standard Ref = https://docs.metaplex.com/programs/token-metadata/changelog/v1.0
 

@@ -8,7 +8,7 @@ import { formatRSAPrivateKey } from '../utils/formatRSA.js';
 import { connection } from "../utils/RpcConnection.js";
 import postgres from "../../db/postgres.js";
 import { logtail } from "../utils/logtail.js";
-import { parseError } from "../utils/parseError.js";
+import { parseError } from "../utils/misc.js";
 
 //Standard Ref = https://docs.metaplex.com/programs/token-metadata/changelog/v1.0
 
@@ -73,7 +73,7 @@ export const uploadCollectionMetadata = async (req, res) => {
       
       const uri = metadataRes.uri
       const metadata = metadataRes.metadata
-      
+
       res.status(200).json({ uri, metadata })
     }
 
