@@ -23,6 +23,8 @@ class SalesHistoryController < ApplicationController
     buyer_id = params[:buyer_id] || (buyer_address.present? ? User.find_by("public_keys LIKE ?", "%#{buyer_address}%")&.id : nil)
     seller_id = params[:seller_id] || (seller_address.present? ? User.find_by("public_keys LIKE ?", "%#{seller_address}%")&.id : nil)
   
+    editionListingUpdateFailed = false
+
     begin
       if is_master_edition
 
@@ -34,25 +36,32 @@ class SalesHistoryController < ApplicationController
             status = "sold"
           end
 
-          if listing.update(
-            listed_status: status, 
-            supply: new_supply
-          )
-            begin 
-              ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
-                message: 'Listing Update', 
-                data: { 
-                  mint: listing.mint, 
-                  listed_status: listing.listed_status,
-                  supply: listing.supply
-                }
-              })
-            rescue StandardError => e
-              Rails.logger.error("Websocket Error: record_sale (ME) - notifications_listings_#{listing.curation.name}: #{e.message}")
+          begin
+            if listing.update(
+              listed_status: status, 
+              supply: new_supply
+            )
+              begin 
+                ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+                  message: 'Listing Update', 
+                  data: { 
+                    mint: listing.mint, 
+                    listed_status: listing.listed_status,
+                    supply: listing.supply
+                  }
+                })
+              rescue StandardError => e
+                Rails.logger.error("Websocket Error: record_sale (ME) - notifications_listings_#{listing.curation.name}: #{e.message}")
+              end
+            else
+              Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
+              puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
             end
-          else
-            Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
-            puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
+          rescue ActiveRecord::StaleObjectError
+            Rails.logger.error("Stale Master Edition Update. Failed to update listing for #{listing.curation.name}")
+            puts "Stale Master Edition Update. Failed to update listing for #{listing.curation.name}"
+            # If the listing was updated by another process let the front end know so it can update with onchian data
+            editionListingUpdateFailed = true
           end
         end
         
@@ -134,7 +143,7 @@ class SalesHistoryController < ApplicationController
       puts "Failed to save recorded sale: #{recorded_sale.errors.full_messages.join(", ")}"
       return render json: { status: 'error', msg: "Failed to save sale history" }, status: :unprocessable_entity
     else
-      return render json: { status: 'success', msg: 'Token sale recorded' }
+      return render json: { status: 'success', msg: 'Token sale recorded', editionListingUpdateFailed: editionListingUpdateFailed }
     end
   rescue StandardError => e
     # Rails.logger.error("Error recording sale: #{e.message}")
