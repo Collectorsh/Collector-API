@@ -11,7 +11,7 @@ class CreatorController < ApplicationController
 
     #ordered as asc so that most recent will override previous names
     artists.each do |a|
-      if a.artist_id 
+      if a.artist_id && a.artist.username
         to_override.push({ public_key: a.public_key, name: a.artist.username })
       elsif a.name 
         artist_map[a.public_key] = a.name 

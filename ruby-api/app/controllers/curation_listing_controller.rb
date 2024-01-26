@@ -26,19 +26,23 @@ class CurationListingController < ApplicationController
       if token["artist_name"].present?
         temp_artist_name = token["artist_name"]
       elsif artist_id.nil? && artist_address.present? 
-        url = "https://api.mallow.art/users/#{artist_address}"
-        headers = {
-          "X-Api-Key" => ENV['MALLOW_API_KEY'],
-        }
+        begin
+          url = "https://api.mallow.art/users/#{artist_address}"
+          headers = {
+            "X-Api-Key" => ENV['MALLOW_API_KEY'],
+          }
 
-        response = HTTParty.get(url, headers: headers)
-        parsed_response = response.parsed_response["result"]
+          response = HTTParty.get(url, headers: headers)
+          parsed_response = response.parsed_response["result"]
 
-        # Access the displayName property
-        display_name = parsed_response["displayName"]
-        username = parsed_response["username"]
+          # Access the displayName property
+          display_name = parsed_response["displayName"]
+          username = parsed_response["username"]
 
-        temp_artist_name = display_name || username
+          temp_artist_name = display_name || username
+        rescue StandardError => e
+          Rails.logger.error("Error fetching artist name from mallow api: #{e.message}")
+        end
       end
 
       return render json: { status: 'error', msg: 'Owner not found' } unless owner_id
@@ -352,8 +356,6 @@ class CurationListingController < ApplicationController
       rescue StandardError => e
         Rails.logger.error("Error fetching listings with artist curations: #{e.message}")
       end
-
-
 
       return render json: { status: 'success', msg: 'Token listing updated' }
     else 
