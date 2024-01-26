@@ -5,9 +5,10 @@ import { Metaplex } from "@metaplex-foundation/js"
 import { verifyTokenBurned } from "./verifyTokenBurned.js"
 import { logtail } from "../utils/logtail.js"
 import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
+import { parseError, pause } from "../utils/misc.js"
 
 
-const pause = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
+
 const metaplex = Metaplex.make(connection);
 
 export const backfillListings = async () => { 

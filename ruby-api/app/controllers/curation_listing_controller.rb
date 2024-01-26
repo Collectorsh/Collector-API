@@ -32,18 +32,16 @@ class CurationListingController < ApplicationController
         }
 
         response = HTTParty.get(url, headers: headers)
-
-        parsed_response = response.parsed_response
-
-        puts "parsed_response: #{parsed_response}"
+        parsed_response = response.parsed_response["result"]
 
         # Access the displayName property
         display_name = parsed_response["displayName"]
         username = parsed_response["username"]
 
         temp_artist_name = display_name || username
-
       end
+
+      return render json: { status: 'error', msg: 'Owner not found' } unless owner_id
   
       listing = CurationListing.create({
         curation_id: params[:curation_id],
