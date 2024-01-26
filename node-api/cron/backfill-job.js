@@ -20,7 +20,5 @@ export const runBackfillJob = () => {
 
     const r3 = await updateArtistNames();
     console.log("Update Artist Names Cron Job Finished:", r3);
-
-    console.log("Closed Postgres Connection");
   });
 }
