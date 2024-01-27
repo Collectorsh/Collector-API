@@ -27,9 +27,9 @@ class SalesHistoryController < ApplicationController
 
     begin
       if is_master_edition
-
+        new_supply = listings[0].supply + params[:editions_minted].to_i
+        
         listings.each do |listing|
-          new_supply = listing.supply + params[:editions_minted].to_i
           status = listing.listed_status
 
           if listing.listed_status == "listed" && new_supply >= listing.max_supply
