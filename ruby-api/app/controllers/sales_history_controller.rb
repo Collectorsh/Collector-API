@@ -27,7 +27,7 @@ class SalesHistoryController < ApplicationController
 
     begin
       if is_master_edition
-        new_supply = listings[0].supply + params[:editions_minted].to_i
+        new_supply = params[:new_supply] || listings[0].supply + params[:editions_minted].to_i 
         
         listings.each do |listing|
           status = listing.listed_status
