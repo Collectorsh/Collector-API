@@ -185,7 +185,7 @@ class CurationListingController < ApplicationController
 
     return render json: { status: 'error', msg: 'No params sent' } unless token && supply
     
-    listing = CurationListing.includes(:curation).find_by(mint: token['mint'], master_edition_market_address: token['master_edition_market_address'])
+    listing = CurationListing.includes(:curation).find_by(mint: token['mint'])
     
     return render json: { status: 'error', msg: 'Listing not found' } unless listing
 
