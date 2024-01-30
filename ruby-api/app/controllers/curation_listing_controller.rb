@@ -185,42 +185,57 @@ class CurationListingController < ApplicationController
 
     return render json: { status: 'error', msg: 'No params sent' } unless token && supply
     
-    listing = CurationListing.includes(:curation).find_by(mint: token['mint'])
+    listings = CurationListing.includes(:curation).where(mint: token['mint'])
     
-    return render json: { status: 'error', msg: 'Listing not found' } unless listing
+    return render json: { status: 'error', msg: 'Listing not found' } unless listings
 
-    status = listing.listed_status
 
-    if listing.listed_status == "listed" && supply >= listing.max_supply
+    #active listing where master_edition_market_address matches token['master_edition_market_address']
+    main_listing = listings.find { |l| l.master_edition_market_address == token['master_edition_market_address'] } || listings[0].listed_status
+
+    status = main_listing.listed_status 
+
+    if main_listing.listed_status == "listed" && supply >= main_listing.max_supply
       status = "sold"
     end
 
-    if listing.update(supply: supply, listed_status: status)
+    listings.each do |listing|
       begin
-        ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
-          message: 'Listing Update', 
-            data: { 
-              mint: listing.mint, 
-              listed_status: listing.listed_status,
-              supply: listing.supply
-            }
-          }
-        )
+        if listing.update(supply: supply, listed_status: status)
+          begin
+            ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+              message: 'Listing Update', 
+                data: { 
+                  mint: listing.mint, 
+                  listed_status: listing.listed_status,
+                  supply: listing.supply
+                }
+              }
+            )
+          rescue StandardError => e
+            Rails.logger.error("Websocket Error: update_edition_supply - notifications_listings_#{token.curation.name}: #{e.message}")
+          end
+        else
+          raise listing.errors.full_messages.join(", ")
+        end
+      rescue ActiveRecord::StaleObjectError
+        Rails.logger.error("Stale Master Edition Update. Failed to update edition supply  #{listing.mint}")
       rescue StandardError => e
-        Rails.logger.error("Websocket Error: update_edition_supply - notifications_listings_#{token.curation.name}: #{e.message}")
+        Rails.logger.error("Failed to update update edition supply for #{listing.mint}: #{listing.errors.full_messages.join(", ")}")
       end
-
-      minted_indexer = MintedIndexer.find_by(mint: listing.mint)
-      if minted_indexer && !minted_indexer.update(supply: supply)
-        Rails.logger.error("Update edition supply error. Failed to update minted_indexer for #{listing.mint}: #{minted_indexer.errors.full_messages.join(", ")}")
-      end
-
-      render json: { status: 'success', msg: 'Edition supply updated', listed_status: status }
-    else
-      Rails.logger.error("Failed to update edition supply for #{token['mint']}: #{listing.errors.full_messages.join(", ")}")
-      render json: { status: 'error', msg: 'Failed to update edition supply' }, status: :unprocessable_entity
     end
 
+    #update minted_indexer if found
+    begin
+      minted_indexer = MintedIndexer.find_by(mint: listing.mint)
+      if minted_indexer && !minted_indexer.update(supply: supply)
+        raise minted_indexer.errors.full_messages.join(", ")
+      end
+    rescue StandardError => e
+      Rails.logger.error("Failed to update minted_indexer for #{listing.mint}: #{e.message}")
+    end
+
+    render json: { status: 'success', msg: 'Edition supply updated', listed_status: status }
   rescue StandardError => e
     Rails.logger.error("Error updating edition supply: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
