@@ -189,7 +189,6 @@ class CurationListingController < ApplicationController
     
     return render json: { status: 'error', msg: 'Listing not found' } unless listings
 
-
     #active listing where master_edition_market_address matches token['master_edition_market_address']
     main_listing = listings.find { |l| l.master_edition_market_address == token['master_edition_market_address'] } || listings[0].listed_status
 
@@ -219,20 +218,20 @@ class CurationListingController < ApplicationController
           raise listing.errors.full_messages.join(", ")
         end
       rescue ActiveRecord::StaleObjectError
-        Rails.logger.error("Stale Master Edition Update. Failed to update edition supply  #{listing.mint}")
+        Rails.logger.error("Stale Master Edition Update. Failed to update edition supply  #{main_listing.mint}")
       rescue StandardError => e
-        Rails.logger.error("Failed to update update edition supply for #{listing.mint}: #{listing.errors.full_messages.join(", ")}")
+        Rails.logger.error("Failed to update update edition supply for #{main_listing.mint}: #{listing.errors.full_messages.join(", ")}")
       end
     end
 
     #update minted_indexer if found
     begin
-      minted_indexer = MintedIndexer.find_by(mint: listing.mint)
+      minted_indexer = MintedIndexer.find_by(mint: main_listing.mint)
       if minted_indexer && !minted_indexer.update(supply: supply)
         raise minted_indexer.errors.full_messages.join(", ")
       end
     rescue StandardError => e
-      Rails.logger.error("Failed to update minted_indexer for #{listing.mint}: #{e.message}")
+      Rails.logger.error("Failed to update minted_indexer for #{main_listing.mint}: #{e.message}")
     end
 
     render json: { status: 'success', msg: 'Edition supply updated', listed_status: status }
