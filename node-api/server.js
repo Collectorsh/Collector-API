@@ -8,6 +8,8 @@ import { uploadCollectionMetadata } from './src/controllers/uploadCollectionMeta
 import { runBackfillJob } from './cron/backfill-job.js';
 import { backfillIndexer, backfillListings, updateIndexerEditions } from './src/scripts/backfill.js';
 import { logtail } from './src/utils/logtail.js';
+import { updateArtistNames } from './src/scripts/addArtistNames.js';
+import { closePostgresConnection } from './db/postgres.js';
 
 
 
@@ -62,6 +64,11 @@ app.get('/runBackfillJob', async (req, res) => {
     backfillListingsResponse,
     backfillIndexerResponse
    });
+})
+
+app.get('/updateArtistNames', async (req, res) => { 
+  const response = await updateArtistNames()
+  res.send(response);
 })
 
 app.get('/updateIndexer', async (req, res) => {

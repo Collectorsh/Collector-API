@@ -7,7 +7,6 @@ class SalesHistoryController < ApplicationController
     listings = CurationListing.includes(:curation).where(mint: params[:token_mint])
 
     if listings.empty?
-      puts "Listing not found for mint: #{params[:token_mint]}"
       return render json: { status: 'error', msg: 'Listing not found' }
     end
     
@@ -23,17 +22,47 @@ class SalesHistoryController < ApplicationController
     buyer_id = params[:buyer_id] || (buyer_address.present? ? User.find_by("public_keys LIKE ?", "%#{buyer_address}%")&.id : nil)
     seller_id = params[:seller_id] || (seller_address.present? ? User.find_by("public_keys LIKE ?", "%#{seller_address}%")&.id : nil)
   
+    editionListingUpdateFailed = false;
+
+    #create new sales record
     begin
-      if is_master_edition
+      recorded_sale = SalesHistory.create(
+        curation_id: params[:curation_id],
+        price: params[:price],
+        is_primary_sale: params[:is_primary_sale],
+        sale_type: params[:sale_type],
+        tx_hash: params[:tx_hash],
+        editions_minted: params[:editions_minted],
+        token_mint: mint,
+        token_name: name,
+        buyer_id: buyer_id,
+        buyer_address: buyer_address,
+        seller_id: seller_id,
+        seller_address: seller_address,
+        artist_id: artist_id,
+        artist_address: artist_address,
+      )
 
-        listings.each do |listing|
-          new_supply = listing.supply + params[:editions_minted].to_i
-          status = listing.listed_status
+      if recorded_sale.errors.any?
+        raise "Failed to save recorded sale: #{recorded_sale.errors.full_messages.join(", ")}"
+      end
+    rescue StandardError => e
+      Rails.logger.error("Request to save listing sales history failed: #{e.message}")
+    end
 
-          if listing.listed_status == "listed" && new_supply >= listing.max_supply
-            status = "sold"
-          end
+    #update curation listings
+   
+    if is_master_edition
+      new_supply = listings[0].supply + params[:editions_minted].to_i 
+      
+      listings.each do |listing|
+        status = listing.listed_status
 
+        if listing.listed_status == "listed" && new_supply >= listing.max_supply
+          status = "sold"
+        end
+
+        begin
           if listing.update(
             listed_status: status, 
             supply: new_supply
@@ -51,22 +80,32 @@ class SalesHistoryController < ApplicationController
               Rails.logger.error("Websocket Error: record_sale (ME) - notifications_listings_#{listing.curation.name}: #{e.message}")
             end
           else
-            Rails.logger.error("Record Master Editions Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
-            puts "Failed to update listing for #{listing.curation.name} Editions: #{listing.errors.full_messages.join(", ")}"
+            raise "Failed to update listing: #{listing.errors.full_messages.join(", ")}"
           end
+        rescue ActiveRecord::StaleObjectError
+          Rails.logger.error("Stale Master Edition Update. Failed to update listing for #{listing.curation.name}")
+          # If the listing was updated by another process let the front end know so it can update with onchian data
+          editionListingUpdateFailed = true
+        rescue StandardError => e
+          Rails.logger.error("Record Master Editions Sale error. Request to update listing for #{listing.curation.name} failed: #{e.message}")
         end
-        
+      end
+      
+      begin
         # update minted_indexer if found
         minted_indexer = MintedIndexer.find_by(mint: mint)
 
         if minted_indexer && !minted_indexer.update(supply: new_supply)
-          Rails.logger.error("Record Master Editions Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
-          puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
+          raise minted_indexer.errors.full_messages.join(", ")
         end
+      rescue StandardError => e
+        Rails.logger.error("Record Master Editions Sale error. Request to update minted_indexer for #{mint} failed: #{e.message}")
+      end
 
-      else
-        # Go through all listings in case the token is listined in multiple curations
-        listings.each do |listing|
+    else
+      # Go through all listings in case the token is listined in multiple curations
+      listings.each do |listing|
+        begin 
           if listing.update(
             listed_status: "sold", 
             owner_address: buyer_address, 
@@ -91,57 +130,34 @@ class SalesHistoryController < ApplicationController
             end
 
           else
-            Rails.logger.error("Record Sale error. Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}")
-            puts "Failed to update listing for #{listing.curation.name}: #{listing.errors.full_messages.join(", ")}"
+            raise listing.errors.full_messages.join(", ")
           end
-
-          # update minted_indexer if found
-          minted_indexer = MintedIndexer.find_by(mint: listing.mint)
-
-          if minted_indexer && !minted_indexer.update(
-            owner_address: buyer_address, 
-            owner_id: buyer_id,
-            primary_sale_happened: true,
-          )
-            Rails.logger.error("Record Sale error. Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}")
-            puts "Failed to update minted_indexer for #{mint}: #{minted_indexer.errors.full_messages.join(", ")}"
-          end
+        rescue StandardError => e 
+          Rails.logger.error("Record Sale error. Request to update listing for #{listing.curation.name} failed: #{e.message}")
         end
       end
-    rescue StandardError => e
-      Rails.logger.error("Error in record sale, failed to updating listings: #{e.message}")
-    end
-  
-    recorded_sale = SalesHistory.create(
-      curation_id: params[:curation_id],
-      price: params[:price],
-      is_primary_sale: params[:is_primary_sale],
-      sale_type: params[:sale_type],
-      tx_hash: params[:tx_hash],
-      editions_minted: params[:editions_minted],
-      token_mint: mint,
-      token_name: name,
-      buyer_id: buyer_id,
-      buyer_address: buyer_address,
-      seller_id: seller_id,
-      seller_address: seller_address,
-      artist_id: artist_id,
-      artist_address: artist_address,
-    )
+      # update minted_indexer if found
+      begin
+        minted_indexer = MintedIndexer.find_by(mint: listing.mint)
 
-    if recorded_sale.errors.any?
-      Rails.logger.error("Failed to save recorded sale: #{recorded_sale.errors.full_messages.join(", ")}")
-      puts "Failed to save recorded sale: #{recorded_sale.errors.full_messages.join(", ")}"
-      return render json: { status: 'error', msg: "Failed to save sale history" }, status: :unprocessable_entity
-    else
-      return render json: { status: 'success', msg: 'Token sale recorded' }
+        if minted_indexer && !minted_indexer.update(
+          owner_address: buyer_address, 
+          owner_id: buyer_id,
+          primary_sale_happened: true,
+        )
+          raise minted_indexer.errors.full_messages.join(", ")
+        end
+      rescue StandardError => e
+        Rails.logger.error("Record Sale error. Request to update minted_indexer for #{listing.mint} failed: #{e.message}")
+      end
+      
     end
+   
+    render json: { status: 'success', msg: 'Token sale recorded', editionListingUpdateFailed: editionListingUpdateFailed }
   rescue StandardError => e
-    # Rails.logger.error("Error recording sale: #{e.message}")
-    # Rails.logger.error(e.backtrace.join("\n"))
-    Rails.logger.error(["Error recording sale: #{e.message} - Backtrace: ", *e.backtrace].join("$/"))
+    Rails.logger.error("Error recording sale: #{e.message}")
 
-    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+    render json: { error: "An error occurred: #{e.message}", editionListingUpdateFailed: true }, status: :internal_server_error
   end
 
   def get_by_range

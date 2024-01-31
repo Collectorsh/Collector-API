@@ -27,4 +27,8 @@ const postgres = Knex({
   },
 });
 
+export const closePostgresConnection = async () => {
+  await postgres.destroy()
+}
+
 export default postgres;

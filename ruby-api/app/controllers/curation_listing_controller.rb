@@ -26,24 +26,26 @@ class CurationListingController < ApplicationController
       if token["artist_name"].present?
         temp_artist_name = token["artist_name"]
       elsif artist_id.nil? && artist_address.present? 
-        url = "https://api.mallow.art/users/#{artist_address}"
-        headers = {
-          "X-Api-Key" => ENV['MALLOW_API_KEY'],
-        }
+        begin
+          url = "https://api.mallow.art/users/#{artist_address}"
+          headers = {
+            "X-Api-Key" => ENV['MALLOW_API_KEY'],
+          }
 
-        response = HTTParty.get(url, headers: headers)
+          response = HTTParty.get(url, headers: headers)
+          parsed_response = response.parsed_response["result"]
 
-        parsed_response = response.parsed_response
+          # Access the displayName property
+          display_name = parsed_response["displayName"]
+          username = parsed_response["username"]
 
-        puts "parsed_response: #{parsed_response}"
-
-        # Access the displayName property
-        display_name = parsed_response["displayName"]
-        username = parsed_response["username"]
-
-        temp_artist_name = display_name || username
-
+          temp_artist_name = display_name || username
+        rescue StandardError => e
+          Rails.logger.error("Error fetching artist name from mallow api: #{e.message}")
+        end
       end
+
+      return render json: { status: 'error', msg: 'Owner not found' } unless owner_id
   
       listing = CurationListing.create({
         curation_id: params[:curation_id],
@@ -183,42 +185,56 @@ class CurationListingController < ApplicationController
 
     return render json: { status: 'error', msg: 'No params sent' } unless token && supply
     
-    listing = CurationListing.includes(:curation).find_by(mint: token['mint'], master_edition_market_address: token['master_edition_market_address'])
+    listings = CurationListing.includes(:curation).where(mint: token['mint'])
     
-    return render json: { status: 'error', msg: 'Listing not found' } unless listing
+    return render json: { status: 'error', msg: 'Listing not found' } unless listings
 
-    status = listing.listed_status
+    #active listing where master_edition_market_address matches token['master_edition_market_address']
+    main_listing = listings.find { |l| l.master_edition_market_address == token['master_edition_market_address'] } || listings[0].listed_status
 
-    if listing.listed_status == "listed" && supply >= listing.max_supply
+    status = main_listing.listed_status 
+
+    if main_listing.listed_status == "listed" && supply >= main_listing.max_supply
       status = "sold"
     end
 
-    if listing.update(supply: supply, listed_status: status)
+    listings.each do |listing|
       begin
-        ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
-          message: 'Listing Update', 
-            data: { 
-              mint: listing.mint, 
-              listed_status: listing.listed_status,
-              supply: listing.supply
-            }
-          }
-        )
+        if listing.update(supply: supply, listed_status: status)
+          begin
+            ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+              message: 'Listing Update', 
+                data: { 
+                  mint: listing.mint, 
+                  listed_status: listing.listed_status,
+                  supply: listing.supply
+                }
+              }
+            )
+          rescue StandardError => e
+            Rails.logger.error("Websocket Error: update_edition_supply - notifications_listings_#{token.curation.name}: #{e.message}")
+          end
+        else
+          raise listing.errors.full_messages.join(", ")
+        end
+      rescue ActiveRecord::StaleObjectError
+        Rails.logger.error("Stale Master Edition Update. Failed to update edition supply  #{main_listing.mint}")
       rescue StandardError => e
-        Rails.logger.error("Websocket Error: update_edition_supply - notifications_listings_#{token.curation.name}: #{e.message}")
+        Rails.logger.error("Failed to update update edition supply for #{main_listing.mint}: #{listing.errors.full_messages.join(", ")}")
       end
-
-      minted_indexer = MintedIndexer.find_by(mint: listing.mint)
-      if minted_indexer && !minted_indexer.update(supply: supply)
-        Rails.logger.error("Update edition supply error. Failed to update minted_indexer for #{listing.mint}: #{minted_indexer.errors.full_messages.join(", ")}")
-      end
-
-      render json: { status: 'success', msg: 'Edition supply updated', listed_status: status }
-    else
-      Rails.logger.error("Failed to update edition supply for #{token['mint']}: #{listing.errors.full_messages.join(", ")}")
-      render json: { status: 'error', msg: 'Failed to update edition supply' }, status: :unprocessable_entity
     end
 
+    #update minted_indexer if found
+    begin
+      minted_indexer = MintedIndexer.find_by(mint: main_listing.mint)
+      if minted_indexer && !minted_indexer.update(supply: supply)
+        raise minted_indexer.errors.full_messages.join(", ")
+      end
+    rescue StandardError => e
+      Rails.logger.error("Failed to update minted_indexer for #{main_listing.mint}: #{e.message}")
+    end
+
+    render json: { status: 'success', msg: 'Edition supply updated', listed_status: status }
   rescue StandardError => e
     Rails.logger.error("Error updating edition supply: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
@@ -354,8 +370,6 @@ class CurationListingController < ApplicationController
       rescue StandardError => e
         Rails.logger.error("Error fetching listings with artist curations: #{e.message}")
       end
-
-
 
       return render json: { status: 'success', msg: 'Token listing updated' }
     else 
