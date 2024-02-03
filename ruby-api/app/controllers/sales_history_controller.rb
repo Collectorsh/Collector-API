@@ -16,7 +16,7 @@ class SalesHistoryController < ApplicationController
     name = listings[0].name
     image = listings[0].image
     is_master_edition = listings[0].is_master_edition
-
+   
     buyer_address = params[:buyer_address]
     seller_address = params[:seller_address]
     buyer_id = params[:buyer_id] || (buyer_address.present? ? User.find_by("public_keys LIKE ?", "%#{buyer_address}%")&.id : nil)
@@ -138,7 +138,7 @@ class SalesHistoryController < ApplicationController
       end
       # update minted_indexer if found
       begin
-        minted_indexer = MintedIndexer.find_by(mint: listing.mint)
+        minted_indexer = MintedIndexer.find_by(mint:  mint)
 
         if minted_indexer && !minted_indexer.update(
           owner_address: buyer_address, 
@@ -148,7 +148,7 @@ class SalesHistoryController < ApplicationController
           raise minted_indexer.errors.full_messages.join(", ")
         end
       rescue StandardError => e
-        Rails.logger.error("Record Sale error. Request to update minted_indexer for #{listing.mint} failed: #{e.message}")
+        Rails.logger.error("Record Sale error. Request to update minted_indexer for #{mint} failed: #{e.message}")
       end
       
     end
