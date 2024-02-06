@@ -16,7 +16,9 @@ class MintedIndexerController < ApplicationController
     minted_indexer = MintedIndexer.find_by(mint: token['mint'])
 
     # If not found, create a new record
-    unless minted_indexer
+    if minted_indexer && (minted_indexer.owner_address != owner_address || minted_indexer.artist_address != artist_address)
+      minted_indexer.update(owner_address: owner_address, owner_id: owner_id, artist_address: artist_address, artist_id: artist_id)
+    elsif !minted_indexer
       minted_indexer = MintedIndexer.create({
         mint: token['mint'],
         name: token['name'],
