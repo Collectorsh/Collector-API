@@ -33,19 +33,23 @@ class CurationListingController < ApplicationController
           }
 
           response = HTTParty.get(url, headers: headers)
-          parsed_response = response.parsed_response["result"]
 
-          # Access the displayName property
-          display_name = parsed_response["displayName"]
-          username = parsed_response["username"]
+          # Check if parsed_response and result key exist
+          parsed_response = response.parsed_response
+          if parsed_response && parsed_response["result"]
+            result = parsed_response["result"]
 
-          temp_artist_name = display_name || username
+            # Access the displayName and username properties
+            display_name = result["displayName"]
+            username = result["username"]
+
+            temp_artist_name = display_name || username
+          end
+
         rescue StandardError => e
           Rails.logger.error("Error fetching artist name from mallow api: #{e.message}")
         end
       end
-
-      return render json: { status: 'error', msg: 'Owner not found' } unless owner_id
   
       listing = CurationListing.create({
         curation_id: params[:curation_id],
