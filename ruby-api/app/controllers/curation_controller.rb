@@ -70,7 +70,7 @@ class CurationController < ApplicationController
   end
 
   def get_by_name
-    unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
+    unless curation = Curation.find_by("LOWER(name) = ? AND hidden = ?", params[:name].downcase, false)
       return render json: { error: "Curation not found" }, status: :not_found
     end
     
@@ -109,12 +109,6 @@ class CurationController < ApplicationController
   def get_by_approved_artist
     return render json: { status: 'error', msg: 'Artist id not sent' } unless params[:artist_id].present?
     artist_id = params[:artist_id].to_i
-
-    # //By approved curation
-    # curations = Curation.where("approved_artist_ids @> ARRAY[?::integer]", artist_id)
-    #   .order('created_at DESC')
-    #   .map(&:condensed_with_curator_and_listings_and_passcode)
-
 
     # //by submitted listing
     curation_ids_subquery = CurationListing.where(artist_id: artist_id).select(:curation_id)
