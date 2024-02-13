@@ -15,7 +15,7 @@ class CreateCurations < ActiveRecord::Migration[6.1]
       t.string :payout_address
       t.string :viewer_passcode,
       t.string :curation_type, null: false, default: 'curator'
-
+      t.boolean :hidden, default: false
       t.timestamps
     end
 

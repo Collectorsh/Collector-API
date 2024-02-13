@@ -353,7 +353,7 @@ class UserController < ApplicationController
     end
 
     user_hash = user.public_info
-    user_hash['curations'] = user.curations&.map(&:condensed)
+    user_hash['curations'] = user.curations.where(hidden: false).map(&:condensed)
 
     render json: { status: 'success', curator: user_hash }
   rescue StandardError => e
