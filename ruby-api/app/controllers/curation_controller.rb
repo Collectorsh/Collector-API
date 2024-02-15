@@ -337,6 +337,16 @@ class CurationController < ApplicationController
     Rails.logger.error("Failed to get all curator curations with private hash: #{e.message}")
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
+
+  def hide_curation
+    curation = @authorized_curation
+    curation.update(hidden: true)
+
+    render json: { status: 'success', msg: 'Curation hidden' }
+  rescue StandardError => e
+    Rails.logger.error("Failed to hide curation: #{e.message}")
+    render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
   
   private 
 
