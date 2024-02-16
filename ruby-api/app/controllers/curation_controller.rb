@@ -1,5 +1,5 @@
 class CurationController < ApplicationController
-  before_action :get_authorized_curation, only: [:generate_viewer_passcode, :update_name, :update_approved_artists, :save_draft_content, :unpublish_content, :publish_content, :get_private_content]
+  before_action :get_authorized_curation, only: [:generate_viewer_passcode, :update_name, :update_approved_artists, :save_draft_content, :unpublish_content, :publish_content, :get_private_content, :hide_curation]
   before_action :get_viewer_authorized_curation, only: [:get_viewer_private_content, :update_self_as_approved_artists]
 
   # defaults to type "curator"
