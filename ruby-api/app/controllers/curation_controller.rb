@@ -1,5 +1,5 @@
 class CurationController < ApplicationController
-  before_action :get_authorized_curation, only: [:generate_viewer_passcode, :update_name, :update_approved_artists, :save_draft_content, :unpublish_content, :publish_content, :get_private_content]
+  before_action :get_authorized_curation, only: [:generate_viewer_passcode, :update_name, :update_approved_artists, :save_draft_content, :unpublish_content, :publish_content, :get_private_content, :hide_curation]
   before_action :get_viewer_authorized_curation, only: [:get_viewer_private_content, :update_self_as_approved_artists]
 
   # defaults to type "curator"
@@ -335,6 +335,16 @@ class CurationController < ApplicationController
     render json: curations
   rescue StandardError => e
     Rails.logger.error("Failed to get all curator curations with private hash: #{e.message}")
+    render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def hide_curation
+    curation = @authorized_curation
+    curation.update(hidden: true)
+
+    render json: { status: 'success', msg: 'Curation hidden' }
+  rescue StandardError => e
+    Rails.logger.error("Failed to hide curation: #{e.message}")
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
   

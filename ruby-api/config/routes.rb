@@ -184,6 +184,7 @@ Rails.application.routes.draw do
     post '/generate_viewer_passcode', to: 'curation#generate_viewer_passcode'
     post '/update_self_as_approved_artists', to: 'curation#update_self_as_approved_artists'
     post '/get_all_curator_curations_with_private_hash', to: 'curation#get_all_curator_curations_with_private_hash'
+    post '/hide_curation', to: 'curation#hide_curation'
   end
 
   scope :curation_listing do
