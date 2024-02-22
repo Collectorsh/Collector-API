@@ -27,37 +27,44 @@ export const backfillListings = async () => {
   
   //find onchain owner address,
  
-  const results = await Promise.all(active_listings.map(async (listing) => { 
+  const results = await Promise.all(active_listings.map(async (listing) => {
     await pause();
 
-    let res = {mint: listing.mint}
+    let res = { mint: listing.mint }
     const mintPublicKey = new PublicKey(listing.mint);
 
-    //fetch metadata account
-    //if metadata account doesn't exist, verify token has been burned
-    let metadataAccountInfo = null;
-    try {
-      const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
-      metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
-    } catch (e) {
-      const state = await verifyTokenBurned(mintPublicKey)
-      // update curation_listing "nft_state" based on burn verification
+    let burnState = await verifyTokenBurned(mintPublicKey)
+
+    let owner = null;
+    
+    if (!burnState) {
+      try {
+        const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
+        const metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
+        owner = metadataAccountInfo.value.data.parsed.info.owner
+        if (!owner) throw new Error("No owner found in metadataAccount")
+      } catch (e) {
+        const err = parseError(e)
+        logtail.error(`backfillListings Error getting token account info for ${ listing.mint } : ${ err }`)
+        burnState = "error-verifying-burn"
+      }
+    } 
+      
+    if (burnState) {
       const update = await postgres('curation_listings')
-        .update({ nft_state: state, listed_status: "unlisted" })
+        .update({ nft_state: burnState, listed_status: "unlisted" })
         .where({ mint: listing.mint })
-        .catch((e) => { 
+        .catch((e) => {
           const err = parseError(e)
-          logtail.error(`Error updating curation_listing ${list.mint}  burn state: ${err}`)
-          console.log(`Error updating curation_listing ${list.mint}  burn state:`, err)
+          logtail.error(`backfillListings Error updating curation_listing ${ listing.mint }  burn state: ${ err }`)
         })
       res.update = update;
-      res.state = state;
+      res.state = burnState;
+
+      return res
     }
       
     try {      
-      const owner = metadataAccountInfo.value.data.parsed.info.owner
-      if (!metadataAccountInfo || !owner) return res;      
-
       res.onChainOwner = owner;
       res.listing_owner = listing.owner_address;
 
@@ -193,7 +200,7 @@ export const backfillIndexer = async () => {
     .select("*")
     .where(function() {
       this.whereNot('nft_state', 'burned').orWhereNull('nft_state');
-    })
+    }).limit(10)
     .catch((e) => {
       const err = parseError(e)
       logtail.error(`Error fetching minted_indexer: ${err}`)
@@ -205,33 +212,41 @@ export const backfillIndexer = async () => {
 
     let res = { mint: indexToken.mint }
     const mintPublicKey = new PublicKey(indexToken.mint);
-    //fetch metadata account
-    //if metadata account doesn't exist, verify token has been burned
-    let metadataAccountInfo = null;
-    try {
-      const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
-      metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
 
-    } catch (e) {
-      const state = await verifyTokenBurned(mintPublicKey)
-      // update curation_listing "nft_state" based on burn verification
-      const update = await postgres('minted_indexer')
-        .update({ nft_state: state,})
-        .where({ mint: indexToken.mint })
-        .catch((e) => {
-          const err = parseError(e)
-          logtail.error(`Error updating indexer item ${ indexToken.mint } burn state: ${err}`)
-          console.log(`Error updating indexer item ${ indexToken.mint } burn state:`, err)
-        })
-      res.update = update;
-      res.state = state;
+    let burnState = await verifyTokenBurned(mintPublicKey)
+
+    let owner = null;
+
+    if (!burnState) {
+      try {
+        const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
+        const metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
+        owner = metadataAccountInfo.value.data.parsed.info.owner
+        if (!owner) throw new Error("No owner found in metadataAccount")
+      } catch (e) {
+        const err = parseError(e)
+        console.log(`backfillIndexer Error getting token account info for ${ listing.mint } : ${ err }`)
+        logtail.error(`backfillIndexer Error getting token account info for ${ listing.mint } : ${ err }`)
+        burnState = "error-verifying-burn"
+      }
     }
 
-  
-    if (!metadataAccountInfo) return res;
+    if (burnState) {
+      console.log("🚀 ~ results ~ burnState:", burnState)
+      const update = await postgres('curation_listings')
+        .update({ nft_state: burnState, listed_status: "unlisted" })
+        .where({ mint: listing.mint })
+        .catch((e) => {
+          const err = parseError(e)
+          logtail.error(`backfillIndexer Error updating curation_listing ${ listing.mint }  burn state: ${ err }`)
+        })
+      res.update = update;
+      res.state = burnState;
 
-    //looking out for owner mismatches, if so update to match onchain
-    const owner = metadataAccountInfo.value.data.parsed.info.owner
+      return res
+    }
+
+
     res.onChainOwner = owner;
     res.indexer_owner = indexToken.owner_address;
     //if owner doesn't match update minted_indexer "owner_address" and owner id
