@@ -1,7 +1,7 @@
 import { connection } from "../utils/RpcConnection.js";
 
 export async function verifyTokenBurned(mintPublicKey) {
-  let state = 'error-verifying-burn'
+  let state = ''
   try {
     //verify token is burned
     const mintAccountInfo = await connection.getParsedAccountInfo(mintPublicKey);
@@ -13,7 +13,8 @@ export async function verifyTokenBurned(mintPublicKey) {
       }
     }
   } catch (error) {
-    console.log("Error fetching account to verify token burned:", error)
+    // console.log("Error fetching account to verify token burned:", error)
+    state = 'error-verifying-burn'
   }
   return state
 }
