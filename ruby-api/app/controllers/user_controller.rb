@@ -342,7 +342,17 @@ class UserController < ApplicationController
     user.update_attribute(:socials, params[:socials])
     render json: { status: 'success', user: user }
   end
+  def update_display_name
+    return render json: { status: 'error', msg: 'Auth missing' } unless params[:api_key]
 
+    user = User.find_by_api_key(params[:api_key])
+    return render json: { status: 'error', msg: 'Api key not valid' } unless user
+
+    user.update_attribute(:name, params[:name])
+    render json: { status: 'success', user: user }
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
   def get_curator_by_username
     unless (user = User.find_by("LOWER(username)= ?", params[:username].downcase))
       return render json: { status: 'error', msg: 'Username not found' }
