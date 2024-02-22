@@ -200,7 +200,7 @@ export const backfillIndexer = async () => {
     .select("*")
     .where(function() {
       this.whereNot('nft_state', 'burned').orWhereNull('nft_state');
-    }).limit(10)
+    })
     .catch((e) => {
       const err = parseError(e)
       logtail.error(`Error fetching minted_indexer: ${err}`)
@@ -224,21 +224,21 @@ export const backfillIndexer = async () => {
         owner = metadataAccountInfo.value.data.parsed.info.owner
         if (!owner) throw new Error("No owner found in metadataAccount")
       } catch (e) {
-        const err = parseError(e)
-        console.log(`backfillIndexer Error getting token account info for ${ listing.mint } : ${ err }`)
-        logtail.error(`backfillIndexer Error getting token account info for ${ listing.mint } : ${ err }`)
+        //TODO figure out a way to filter out compressed tokens before logging
+
+        // const err = parseError(e)
+        // logtail.error(`backfillIndexer Error getting token account info for ${ indexToken.mint } : ${ err }`)
         burnState = "error-verifying-burn"
       }
     }
 
-    if (burnState) {
-      console.log("🚀 ~ results ~ burnState:", burnState)
-      const update = await postgres('curation_listings')
-        .update({ nft_state: burnState, listed_status: "unlisted" })
-        .where({ mint: listing.mint })
+    if (burnState === "burned") {
+      const update = await postgres('minted_indexer')
+        .update({ nft_state: burnState })
+        .where({ mint: indexToken.mint })
         .catch((e) => {
           const err = parseError(e)
-          logtail.error(`backfillIndexer Error updating curation_listing ${ listing.mint }  burn state: ${ err }`)
+          logtail.error(`backfillIndexer Error updating curation_listing ${ indexToken.mint }  burn state: ${ err }`)
         })
       res.update = update;
       res.state = burnState;
@@ -246,18 +246,31 @@ export const backfillIndexer = async () => {
       return res
     }
 
+    if (!owner) return res
+
 
     res.onChainOwner = owner;
     res.indexer_owner = indexToken.owner_address;
     //if owner doesn't match update minted_indexer "owner_address" and owner id
     if (owner !== indexToken.owner_address) {
-      const metadata = await metaplex.nfts().findByMint({
-        mintAddress: mintPublicKey
-      })
+      let editionData = null;
 
-      const editionData = metadata.edition;
+      try {
+        const metadata = await metaplex.nfts().findByMint({
+          mintAddress: mintPublicKey
+        })
+        editionData = metadata?.edition;
 
-      const isMasterEdition = Number(editionData.maxSupply) > 0;
+      } catch (e) {
+
+        return res
+        //TODO figure out a way to filter out compressed tokens before logging
+        // const err = parseError(e)
+        // logtail.error(`Error fetching metadata ${ indexToken.mint }: ${err}`)
+        // res.error = `Error fetching metadata ${ indexToken.mint }: ${err}`
+      }
+
+      const isMasterEdition = editionData?.maxSupply && Number(editionData.maxSupply) > 0;
       res.isMasterEdition = isMasterEdition;
 
       if (isMasterEdition) { 

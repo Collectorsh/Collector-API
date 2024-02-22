@@ -13,7 +13,7 @@ export async function verifyTokenBurned(mintPublicKey) {
       }
     }
   } catch (error) {
-    console.log("Error fetching account to verify token burned:", error)
+    // console.log("Error fetching account to verify token burned:", error)
     state = 'error-verifying-burn'
   }
   return state
