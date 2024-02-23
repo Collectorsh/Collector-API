@@ -53,6 +53,7 @@ Rails.application.routes.draw do
     post '/get_user_by_address', to: 'user#get_user_by_address'
     post '/verify', to: 'user#verify'
     post '/save_curations_order', to: 'user#save_curations_order'
+    post '/update_display_name', to: 'user#update_display_name'
   end
 
   scope :following do
@@ -184,6 +185,7 @@ Rails.application.routes.draw do
     post '/generate_viewer_passcode', to: 'curation#generate_viewer_passcode'
     post '/update_self_as_approved_artists', to: 'curation#update_self_as_approved_artists'
     post '/get_all_curator_curations_with_private_hash', to: 'curation#get_all_curator_curations_with_private_hash'
+    post '/hide_curation', to: 'curation#hide_curation'
   end
 
   scope :curation_listing do
