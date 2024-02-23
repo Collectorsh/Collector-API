@@ -219,6 +219,12 @@ Rails.application.routes.draw do
     post '/update_metadata', to: 'minted_indexer#update_metadata'
   end
 
+  scope :waitlist_signup do
+    get '/get_all', to: 'waitlist_signup#get_all'
+    post '/create', to: 'waitlist_signup#create'
+    post '/get_by_user_id', to: 'waitlist_signup#get_by_user_id'
+  end
+
   get '/auth/:provider/callback', to: "sessions#create"
   post '/auth/create', to: "social#create"
   post '/auth/destroy', to: "social#destroy"
