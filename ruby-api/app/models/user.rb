@@ -30,6 +30,6 @@ class User < ApplicationRecord
                     if: :new_record?
 
   def public_info
-    attributes.except("api_key", "nonce", "twitter_oauth_secret", "twitter_oauth_token")
+    attributes.except("api_key", "nonce", "twitter_oauth_secret", "twitter_oauth_token", "email")
   end
 end
