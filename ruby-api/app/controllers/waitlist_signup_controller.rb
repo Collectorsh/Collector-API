@@ -3,9 +3,6 @@
 class WaitlistSignupController < ApplicationController
   def get_all
     signups = WaitlistSignup.includes(:user)
-
-    puts "signups #{signups.inspect}"
-
     custom_json = signups.map do |signup|
       signup_attributes = signup.attributes
       user_attributes = signup.user.public_info
