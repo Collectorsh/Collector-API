@@ -223,6 +223,7 @@ Rails.application.routes.draw do
     get '/get_all', to: 'waitlist_signup#get_all'
     post '/create', to: 'waitlist_signup#create'
     post '/get_by_user_id', to: 'waitlist_signup#get_by_user_id'
+    post '/approve_waitlist', to: 'waitlist_signup#approve_waitlist'
   end
 
   get '/auth/:provider/callback', to: "sessions#create"
