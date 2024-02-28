@@ -148,6 +148,20 @@ class CurationController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def get_latest_curations
+    curations = Curation.includes(:curator)
+      .where(is_published: true)
+      .where.not("published_content ->> 'banner_image' IS NULL")
+      .order('created_at DESC')
+      .limit(9)
+    curations_with_curators = curations.map(&:condensed_with_curator)
+
+    render json: curations_with_curators
+  rescue StandardError => e
+    Rails.logger.error("Failed to get latest curations: #{e.message}")
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
   def get_private_content
     curation = @authorized_curation
 
