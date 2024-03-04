@@ -186,6 +186,7 @@ Rails.application.routes.draw do
     post '/update_self_as_approved_artists', to: 'curation#update_self_as_approved_artists'
     post '/get_all_curator_curations_with_private_hash', to: 'curation#get_all_curator_curations_with_private_hash'
     post '/hide_curation', to: 'curation#hide_curation'
+    get '/get_latest_curations', to: 'curation#get_latest_curations'
   end
 
   scope :curation_listing do
@@ -217,6 +218,13 @@ Rails.application.routes.draw do
     post '/get_by_mint', to: 'minted_indexer#get_by_mint'
     post '/get_by_creator', to: 'minted_indexer#get_by_creator'
     post '/update_metadata', to: 'minted_indexer#update_metadata'
+  end
+
+  scope :waitlist_signup do
+    get '/get_all', to: 'waitlist_signup#get_all'
+    post '/create', to: 'waitlist_signup#create'
+    post '/get_by_user_id', to: 'waitlist_signup#get_by_user_id'
+    post '/approve_waitlist', to: 'waitlist_signup#approve_waitlist'
   end
 
   get '/auth/:provider/callback', to: "sessions#create"
