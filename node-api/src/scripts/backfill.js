@@ -36,11 +36,13 @@ export const backfillListings = async () => {
     let burnState = await verifyTokenBurned(mintPublicKey)
 
     let owner = null;
+
+    let metadataAccountInfo;
     
     if (!burnState) {
       try {
         const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
-        const metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
+        metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
         owner = metadataAccountInfo.value.data.parsed.info.owner
         if (!owner) throw new Error("No owner found in metadataAccount")
       } catch (e) {
