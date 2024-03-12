@@ -36,11 +36,13 @@ export const backfillListings = async () => {
     let burnState = await verifyTokenBurned(mintPublicKey)
 
     let owner = null;
+
+    let metadataAccountInfo;
     
     if (!burnState) {
       try {
         const largestAccounts = await connection.getTokenLargestAccounts(mintPublicKey);
-        const metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
+        metadataAccountInfo = await connection.getParsedAccountInfo(largestAccounts.value[0].address);
         owner = metadataAccountInfo.value.data.parsed.info.owner
         if (!owner) throw new Error("No owner found in metadataAccount")
       } catch (e) {
@@ -90,6 +92,8 @@ export const backfillListings = async () => {
 
             // update curation_listing "nft_state" to flag missing market address
             const state = "edition-market-address-missing"
+
+         
             const update = await postgres('curation_listings')
               .update({
                 nft_state: state,
@@ -100,6 +104,7 @@ export const backfillListings = async () => {
                 logtail.error(`Error updating curation_listing ${ listing.mint }  burn state: ${err}`)
                 console.log(`Error updating curation_listing ${ listing.mint }  burn state:`, err)
               })
+            
             res.update = update;
             res.state = state
 
@@ -164,10 +169,11 @@ export const backfillListings = async () => {
         // default is "initialized", looking out for "frozen"
         // if was frozen or is frozen and it doesnt match the current db state update curation_listing "nft_state" to match current
         const state = metadataAccountInfo.value.data.parsed.info.state;
+
         const wasOrIsFrozen = state === "frozen" || listing.nft_state === "frozen"
         //listing.nft_state is "frozen" if it was frozen before, if its been changed we need to revert teh db to match the onchain state
         if (wasOrIsFrozen && state !== listing.nft_state) {
-          //update curation_listing "nft_state" 
+          // update curation_listing "nft_state" 
           const update = await postgres('curation_listings')
             .update({ nft_state: state })
             .where({ mint: listing.mint })

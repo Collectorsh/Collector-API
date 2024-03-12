@@ -61,7 +61,7 @@ class UploadImageJob < ApplicationJob
     upload = UploadedImage.where(mint: mint).first_or_create
     upload.update_attribute(:success, true)
   rescue StandardError => e
-    Bugsnag.notify(e)
+    # Bugsnag.notify(e)
     upload = UploadedImage.where(mint: mint).first_or_create
     upload.update_attribute(:retries, upload.retries + 1)
   end
