@@ -59,10 +59,10 @@ app.post('/upload-collection-metadata',
 
 app.get('/runBackfillJob', async (req, res) => {
   const backfillListingsResponse = await backfillListings();
-  const backfillIndexerResponse = await backfillIndexer()
+  // const backfillIndexerResponse = await backfillIndexer()
   res.send({ 
     backfillListingsResponse,
-    backfillIndexerResponse
+    // backfillIndexerResponse
    });
 })
 
