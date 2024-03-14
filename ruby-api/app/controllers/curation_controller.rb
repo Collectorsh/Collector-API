@@ -83,6 +83,22 @@ class CurationController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def search_by_name
+    unless curations = Curation.where("LOWER(name) LIKE ? AND hidden = ?", "%#{params[:name].downcase}%", false)
+      return render json: { error: "Curation not found" }, status: :not_found
+    end
+
+    curations_hash = curations.map do |curation|
+      curation_hash = curation.public_info
+      curation_hash["curator"] = curation.curator.public_info
+      curation_hash
+    end
+    
+    render json: curations_hash
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
   def get_listings_and_artists_by_name
     unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
       return render json: { error: "Curation not found" }, status: :not_found
@@ -140,11 +156,31 @@ class CurationController < ApplicationController
   end
 
   def get_highlighted_curations
-    highlight = CurationHighlight.find_by(name: "homepage")
+    highlight = CurationHighlight.find_by(name: params[:highlight_group] || "homepage")
     curations = highlight.fetch_curations
     render json: curations
   rescue StandardError => e
     Rails.logger.error("Failed to get highlighted curations: #{e.message}")
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def set_highlighted_curations
+    user = User.find_by_api_key(params[:api_key])
+    adminIDs = [
+      720, #Nate (username: n8solomon)
+      5421, #Scott (username: EV3)
+    ]
+    authorized = user && adminIDs.include?(user.id)
+
+    return render json: { status: 'error', msg: 'Not authorized' } unless authorized
+
+    highlight = CurationHighlight.find_by(name: params[:highlight_group] || "homepage")
+    highlight.curation_ids = params[:curation_ids]
+    highlight.save
+
+    render json: { status: 'success', msg: 'Highlighted curations set' }
+  rescue StandardError => e
+    Rails.logger.error("Failed to set highlighted curations: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
