@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:18
 
 # RUN mkdir -p /collector-api/node-api
 # WORKDIR /collector-api/node-api
