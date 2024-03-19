@@ -11,7 +11,7 @@
       # @mint = mint
       @cld_id = cld_id
       @image_url = image_url
-      @socket_id = socket_id
+      @socket_id = socket_id #deprecating sockets feedback (ActionCable)
     end
 
     def call
@@ -55,38 +55,38 @@
         token.merge!({ cld_id: cld_id })
         
         if token.key?('error') || !token["image"].present?
-          ActionCable.server.broadcast("notifications_#{socket_id}", {
-            message: 'Optimizing Error', 
-            data: { cld_id: cld_id, error: "No Image Metadata Found: #{token['error']}" }
-          })
+          # ActionCable.server.broadcast("notifications_#{socket_id}", {
+          #   message: 'Optimizing Error', 
+          #   data: { cld_id: cld_id, error: "No Image Metadata Found: #{token['error']}" }
+          # })
           results << token
         else 
           begin
             cldResult = new(image_url: token["image"], cld_id: cld_id, socket_id: socket_id).call
 
             if cldResult["public_id"].present?
-              # puts "Uploaded: #{cld_id}"
-              ActionCable.server.broadcast("notifications_#{socket_id}", {
-                message: 'Image Optimized', 
-                data: { cld_id: cld_id, imageId: cldResult["public_id"] }
-              })
+              
+              # ActionCable.server.broadcast("notifications_#{socket_id}", {
+              #   message: 'Image Optimized', 
+              #   data: { cld_id: cld_id, imageId: cldResult["public_id"] }
+              # })
 
               results << { imageId: cldResult['public_id'], cld_id: cld_id }
             else 
               # puts "Saving large upload for last: #{cld_id}"
-              ActionCable.server.broadcast("notifications_#{socket_id}", {
-                message: 'Image Queued', 
-                data: { cld_id: cld_id, imageId: nil }
-              })
+              # ActionCable.server.broadcast("notifications_#{socket_id}", {
+              #   message: 'Image Queued', 
+              #   data: { cld_id: cld_id, imageId: nil }
+              # })
 
               later << token
             end
           rescue => e
             puts "Error uploading image for #{cld_id}: #{e.message}"
-            ActionCable.server.broadcast("notifications_#{socket_id}", {
-              message: 'Optimizing Error', 
-              data: { cld_id: cld_id, error: "Error Optimizating Image: #{e.message}" }
-            })
+            # ActionCable.server.broadcast("notifications_#{socket_id}", {
+            #   message: 'Optimizing Error', 
+            #   data: { cld_id: cld_id, error: "Error Optimizating Image: #{e.message}" }
+            # })
             results << { fallbackImage: token['image'], cld_id: cld_id, error: "Error Optimizating Image: #{e.message}" }
           end
         end
@@ -114,10 +114,10 @@
 
       OptimizedImage.upsert_all(optimizedResults, unique_by: :cld_id) if optimizedResults.present?
 
-      ActionCable.server.broadcast("notifications_#{socket_id}", {
-        message: 'Resizing Images', 
-        data: { resizing: later.count }
-      })
+      # ActionCable.server.broadcast("notifications_#{socket_id}", {
+      #   message: 'Resizing Images', 
+      #   data: { resizing: later.count }
+      # })
 
       later.each do |token|
         cldResult = new(image_url: token["image"], cld_id: token['cld_id'], socket_id: socket_id).call_large_image
@@ -166,20 +166,20 @@
         image_file.close
         image_file.unlink # delete the temporary file
         
-        ActionCable.server.broadcast("notifications_#{socket_id}", {
-          message: 'Image Optimized', 
-          data: { cld_id: cld_id, imageId: cldResult["public_id"] }
-        })
+        # ActionCable.server.broadcast("notifications_#{socket_id}", {
+        #   message: 'Image Optimized', 
+        #   data: { cld_id: cld_id, imageId: cldResult["public_id"] }
+        # })
 
         optimized = OptimizedImage.where(cld_id: cld_id).first_or_create
         optimized.update(optimized: "True", error_message: nil)
         # puts "Uploaded Large: #{cld_id}"
       rescue => e
         puts "Error uploading large image: #{e.message}"
-        ActionCable.server.broadcast("notifications_#{socket_id}", {
-          message: 'Optimizing Error', 
-          data: { cld_id: cld_id, error: e.message }
-        })
+        # ActionCable.server.broadcast("notifications_#{socket_id}", {
+        #   message: 'Optimizing Error', 
+        #   data: { cld_id: cld_id, error: e.message }
+        # })
         optimized = OptimizedImage.where(cld_id: cld_id).first_or_create
         optimized.update(optimized: "Error", error_message: "Error Optimizing: #{e.message}")
       end

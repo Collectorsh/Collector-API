@@ -67,7 +67,6 @@ export const uploadMetadata = async (req, res) => {
       const filesToUpload = [imgMetaplexFile, altMetaplexFile].filter((f) => f)//filter out undefined
       const [imageUri, altUri] = await bundlr.uploadAll(filesToUpload);
 
-
       const imageUriWithExtension = imageUri + "?ext=" + imgExtension.replace(".", "")
 
       const files = [{
