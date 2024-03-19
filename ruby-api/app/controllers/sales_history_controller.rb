@@ -4,7 +4,7 @@ class SalesHistoryController < ApplicationController
   def record_sale
     user = @authorized_user
 
-    listings = CurationListing.includes(:curation).where(mint: params[:token_mint])
+    listings = CurationListing.includes(curation: [:curator]).where(mint: params[:token_mint])
 
     if listings.empty?
       return render json: { status: 'error', msg: 'Listing not found' }
@@ -68,7 +68,7 @@ class SalesHistoryController < ApplicationController
             supply: new_supply
           )
             begin 
-              ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+              ActionCable.server.broadcast("notifications_listings_#{listing.curation.curator.username}-#{listing.curation.name}", {
                 message: 'Listing Update', 
                 data: { 
                   mint: listing.mint, 
@@ -103,7 +103,7 @@ class SalesHistoryController < ApplicationController
       end
 
     else
-      # Go through all listings in case the token is listined in multiple curations
+      # Go through all listings in case the token is listed in multiple curations
       listings.each do |listing|
         begin 
           if listing.update(
@@ -114,7 +114,7 @@ class SalesHistoryController < ApplicationController
             listing_receipt: nil
           )
             begin
-              ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+              ActionCable.server.broadcast("notifications_listings_#{listing.curation.curator.username}-#{listing.curation.name}", {
                 message: 'Listing Update', 
                 data: { 
                   mint: listing.mint, 

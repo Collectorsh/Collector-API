@@ -189,7 +189,7 @@ class CurationListingController < ApplicationController
 
     return render json: { status: 'error', msg: 'No params sent' } unless token && supply
     
-    listings = CurationListing.includes(:curation).where(mint: token['mint'])
+    listings = CurationListing.includes(curation: [:curator]).where(mint: token['mint'])
     
     return render json: { status: 'error', msg: 'Listing not found' } unless listings
 
@@ -206,7 +206,7 @@ class CurationListingController < ApplicationController
       begin
         if listing.update(supply: supply, listed_status: status)
           begin
-            ActionCable.server.broadcast("notifications_listings_#{listing.curation.name}", {
+            ActionCable.server.broadcast("notifications_listings_#{listing.curation.curator.username}-#{listing.curation.name}", {
               message: 'Listing Update', 
                 data: { 
                   mint: listing.mint, 
@@ -248,10 +248,9 @@ class CurationListingController < ApplicationController
   def update_listing_status
     user = @authorized_user # just using to confirm action comes from a valid user
 
-    token = CurationListing.includes(:curation).find_by(mint: params[:token_mint], curation_id: params[:curation_id])
+    token = CurationListing.includes(curation: [:curator]).find_by(mint: params[:token_mint], curation_id: params[:curation_id])
 
     if !token.present?
-      puts "Token not found: #{params[:token_mint]}"
       return render json: { status: 'error', msg: 'Token not found' }
     end
 
@@ -265,7 +264,7 @@ class CurationListingController < ApplicationController
       nft_state: params[:nft_state]
     )
       begin
-        ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+        ActionCable.server.broadcast("notifications_listings_#{token.curation.curator.username}-#{token.curation.name}", {
           message: 'Listing Update', 
           data: { 
             mint: token.mint, 
@@ -305,12 +304,6 @@ class CurationListingController < ApplicationController
       Rails.logger.error("Failed to update listing status for #{token.mint}: #{token.errors.full_messages.join(", ")}")
       render json: { status: 'error', msg: 'Failed to update token listing status' }, status: :unprocessable_entity
     end
-
-
-
-
-
-
   rescue StandardError => e
     Rails.logger.error("Error updating listing status: #{e.message}")
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
@@ -328,7 +321,7 @@ class CurationListingController < ApplicationController
 
     has_required_props = token.is_master_edition ? master_edition_market_address.present? : listing_receipt.present?
     if !has_required_props || !buy_now_price.present?
-      puts "Missing required props #{token.mint}: ME market address#{master_edition_market_address}, listing reciept: #{listing_receipt}, buy now price: #{buy_now_price}" 
+      Rails.logger.error("Missing required props #{token.mint}: ME market address#{master_edition_market_address}, listing reciept: #{listing_receipt}, buy now price: #{buy_now_price}")
       return render json: { status: 'error', msg: 'Props not sent' }
     end
 
@@ -339,7 +332,7 @@ class CurationListingController < ApplicationController
       master_edition_market_address: master_edition_market_address
     )
       begin
-        ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+        ActionCable.server.broadcast("notifications_listings_#{token.curation.curator.username}-#{token.curation.name}", {
           message: 'Listing Update', 
           data: { 
             mint: token.mint, 
@@ -377,7 +370,6 @@ class CurationListingController < ApplicationController
 
       return render json: { status: 'success', msg: 'Token listing updated' }
     else 
-      puts "FAILED TO SAVE TOKEN: #{token.errors.full_messages.join(", ")}"
       Rails.logger.error("Failed to update listing for #{token.mint}: #{token.errors.full_messages.join(", ")}")
       return render json: { status: 'error', msg: 'Failed to update token listing' }, status: :unprocessable_entity
     end
@@ -394,7 +386,7 @@ class CurationListingController < ApplicationController
       if token.update(listed_status: status, primary_sale_happened: true)
 
         begin
-          ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+          ActionCable.server.broadcast("notifications_listings_#{token.curation.curator.username}-#{token.curation.name}", {
             message: 'Listing Update', 
             data: { 
               mint: token.mint, 
@@ -425,7 +417,7 @@ class CurationListingController < ApplicationController
 
       if token.update(listed_status: "unlisted", buy_now_price: nil, listing_receipt: nil)
         begin
-          ActionCable.server.broadcast("notifications_listings_#{token.curation.name}", {
+          ActionCable.server.broadcast("notifications_listings_#{token.curation.curator.username}-#{token.curation.name}", {
             message: 'Listing Update', 
             data: { 
               mint: token.mint, 
@@ -514,14 +506,15 @@ class CurationListingController < ApplicationController
 
   def token_from_confirmed_owner
     user = get_authorized_user
-    token = CurationListing.includes(:curation).find_by(mint: params[:token_mint], curation_id: params[:curation_id])
+    token = CurationListing.includes(curation: [:curator]).find_by(mint: params[:token_mint], curation_id: params[:curation_id])
+
 
     if !token.present?
       puts "Token not found: #{params[:token_mint]}"
       return render json: { status: 'error', msg: 'Token not found' }
     end
 
-    if !user.public_keys.include?(token.owner_address)
+    if !user.present? || !user.public_keys.include?(token.owner_address)
       puts "Token not owned by user: #{token.mint}"
       return render json: { status: 'error', msg: 'Token not owned by user' }
     end
