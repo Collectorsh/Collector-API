@@ -185,11 +185,25 @@ class CurationController < ApplicationController
   end
 
   def get_latest_curations
+    distinct_curations_sql = Curation
+                          .select("DISTINCT ON (curator_id) id, first_published_at")
+                          .where(is_published: true)
+                          .where.not("published_content ->> 'banner_image' IS NULL")
+                          .order(:curator_id, first_published_at: :desc)
+                          .to_sql
+
+
+    # First, turn the SQL back into an ActiveRecord relation
+    distinct_curations = Curation.from("(#{distinct_curations_sql}) as distinct_curations")
+
+    # Then, perform a join and order by first_published_at DESC
     curations = Curation.includes(:curator)
-      .where(is_published: true)
-      .where.not("published_content ->> 'banner_image' IS NULL")
-      .order('created_at DESC')
-      .limit(9)
+                        .joins("INNER JOIN (#{distinct_curations_sql}) as recent_curations ON curations.id = recent_curations.id")
+                        .order('recent_curations.first_published_at DESC')
+                        .limit(9)
+
+
+
     curations_with_curators = curations.map(&:condensed_with_curator)
 
     render json: curations_with_curators
@@ -237,6 +251,9 @@ class CurationController < ApplicationController
 
     curation.published_content = content
     curation.is_published = true
+    if curation.first_published_at.nil?
+      curation.first_published_at = Time.current
+    end
     curation.save
 
     render json: { status: 'success', msg: 'Curation published' }
