@@ -167,7 +167,7 @@ class SalesHistoryController < ApplicationController
 
     artist = artist_username.present? ? User.find_by(username: artist_username) : nil
     buyer = buyer_username.present? ? User.find_by(username: buyer_username) : nil
-    curation = curation_name.present? ? Curation.find_by(name: curation_name) : nil
+    curations = curation_name.present? ? Curation.where(name: curation_name) : Curation.none
 
     records = SalesHistory
       .includes(:buyer, :seller, :artist, curation: :curator)
@@ -176,7 +176,7 @@ class SalesHistoryController < ApplicationController
 
     records = records.where(artist_id: artist.id) if artist.present?
     records = records.where(buyer_id: buyer.id) if buyer.present?
-    records = records.where(curation_id: curation.id) if curation.present?
+    records = records.where(curation_id: curations.pluck(:id)) if curations.exists?
 
     modified_records = records.map do |record|
       {

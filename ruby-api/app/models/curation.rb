@@ -4,7 +4,9 @@ class Curation < ApplicationRecord
 
   delegate :basic_info, to: :curator, prefix: true
 
-  validates :name, allow_nil: false, uniqueness: { case_sensitive: false }
+  # validates :name, allow_nil: false, uniqueness: { case_sensitive: false }
+  validates :name, allow_nil: false, uniqueness: { case_sensitive: false, scope: :curator_id }
+
   validates_format_of :name, with: /\A(?!.*[_-]{2})[a-zA-Z0-9_-]{2,31}\z/, message: "Name needs to be url friendly"
 
   def public_info

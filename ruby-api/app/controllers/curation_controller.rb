@@ -70,7 +70,19 @@ class CurationController < ApplicationController
   end
 
   def get_by_name
-    unless curation = Curation.find_by("LOWER(name) = ? AND hidden = ?", params[:name].downcase, false)
+
+    curation = nil;
+
+    if params[:username].present?
+      curation = Curation.joins(:curator).find_by(
+        "LOWER(curations.name) = ? AND curations.hidden = ? AND LOWER(users.username) = ?", 
+        params[:name].downcase, false, params[:username].downcase
+      )
+    else 
+      curation = Curation.find_by("LOWER(name) = ? AND hidden = ?", params[:name].downcase, false)
+    end
+
+    if curation.nil?
       return render json: { error: "Curation not found" }, status: :not_found
     end
     
@@ -100,7 +112,14 @@ class CurationController < ApplicationController
   end
 
   def get_listings_and_artists_by_name
-    unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
+    # unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
+    #   return render json: { error: "Curation not found" }, status: :not_found
+    # end
+
+    unless curation = Curation.joins(:curator).find_by(
+        "LOWER(curations.name) = ? AND LOWER(users.username) = ?", 
+        params[:name].downcase, params[:username].downcase
+      )
       return render json: { error: "Curation not found" }, status: :not_found
     end
         
@@ -355,9 +374,9 @@ class CurationController < ApplicationController
   def check_name_availability
     new_name = params[:new_name]&.strip
 
-    return render json: { status: 'error', msg: 'New name not sent' } unless new_name.present?
+    return render json: { status: 'error', msg: 'Identity not sent' } unless new_name.present? && params[:curator_id].present?
 
-    if Curation.find_by("LOWER(name) = ?", new_name.downcase)
+    if Curation.find_by("LOWER(name) = ? AND curator_id = ?", new_name.downcase, params[:curator_id])
       render json: { status: 'error', msg: 'Name taken' }
     else
       render json: { status: 'success', msg: 'Name available' }
@@ -407,9 +426,11 @@ class CurationController < ApplicationController
 
   def hide_curation
     curation = @authorized_curation
-    curation.update(hidden: true)
-
-    render json: { status: 'success', msg: 'Curation hidden' }
+    if curation.update(hidden: true, name: "#{curation.name}-hidden-#{SecureRandom.hex(4)}")
+      render json: { status: 'success', msg: 'Curation hidden' }
+    else 
+      render json: { status: 'error', msg: curation.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
   rescue StandardError => e
     Rails.logger.error("Failed to hide curation: #{e.message}")
     render json: { status: 'error', msg: "An error occurred: #{e.message}" }, status: :internal_server_error
@@ -418,7 +439,8 @@ class CurationController < ApplicationController
   private 
 
   def get_authorized_curation
-    unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
+    # unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
+    unless curation = Curation.find_by(id: params[:curation_id])
       return render json: { error: "Curation not found" }, status: :not_found
     end
 
@@ -432,7 +454,7 @@ class CurationController < ApplicationController
 
   def get_viewer_authorized_curation
     unless user = User.find_by_api_key(params[:api_key])
-      return render json: { status: 'error', msg: 'Not authorized' } unless authorized
+      return render json: { status: 'error', msg: 'Not authorized' }
     end 
 
     unless curation = Curation.find_by_viewer_passcode(params[:viewer_passcode])
