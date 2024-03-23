@@ -145,9 +145,38 @@ class UserController < ApplicationController
       params[:public_key], user.nonce
     )
 
-    if User.where("public_keys LIKE '%#{params[:public_key]}%' AND id <> #{user.id}").first
-      return render json: { status: 'error',
-                            msg: 'Address already in use' }
+    # existing_user = User.where("public_keys LIKE '%#{params[:public_key]}%' AND id <> #{user.id}").first
+    existing_user = User.where("public_keys LIKE ? AND id <> ?", "%#{params[:public_key]}%", user.id).first
+
+
+
+    if existing_user
+      #check if they have any associated listings or curations
+      existing_names = ArtistName.exists?(artist_id: existing_user.id)
+      existing_listings = CurationListing.exists?(["artist_id = ? OR owner_id = ?", existing_user.id, existing_user.id])
+      existing_curations = Curation.exists?(curator_id: existing_user.id)
+      existing_indexed_mints = MintedIndexer.exists?(["artist_id = ? OR owner_id = ?", existing_user.id, existing_user.id])
+      existing_sales_history = SalesHistory.exists?(["buyer_id = ? OR seller_id = ? OR artist_id = ?", existing_user.id, existing_user.id, existing_user.id])
+      existing_waitlist_signup = WaitlistSignup.exists?(user_id: existing_user.id)
+
+      #if unable to delete, then return all assoaciated addresses and tell the user to open that account and remove the address
+      if existing_names || existing_listings || existing_curations || existing_indexed_mints || existing_sales_history || existing_waitlist_signup
+        return render json: { status: 'error', msg: 'Address already in use', existing_user: existing_user }
+      end
+
+      #if not, then delete the user and continue adding
+      begin
+        unless existing_user.destroy
+          return render json: { status: 'error', msg: 'Unable to delete old account', existing_user: existing_user }
+        end
+
+        puts "user destroyed"
+      rescue => e
+        # Log the error and return a response indicating failure
+        Rails.logger.error "Failed to delete user: #{e.message}"
+        return render json: { status: 'error', msg: 'An error occurred while trying to delete old account', existing_user: existing_user }
+      end
+
     end
 
     keys = user.public_keys
@@ -157,6 +186,9 @@ class UserController < ApplicationController
     end
 
     render json: { status: 'success', user: user }
+  rescue StandardError => e
+    Rails.logger.error "Error adding wallet: #{e.message}"
+    render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
   def add_wallet_with_secret
@@ -170,9 +202,36 @@ class UserController < ApplicationController
                             msg: 'API key not found' }
     end
 
-    if User.where("public_keys LIKE '%#{params[:public_key]}%' AND id <> #{user.id}").first
-      return render json: { status: 'error',
-                            msg: 'Address already in use' }
+    # existing_user = User.where("public_keys LIKE '%#{params[:public_key]}%' AND id <> #{user.id}").first
+    existing_user = User.where("public_keys LIKE ? AND id <> ?", "%#{params[:public_key]}%", user.id).first
+
+    if existing_user
+      #check if they have any associated listings or curations
+      existing_names = ArtistName.exists?(artist_id: existing_user.id)
+      existing_listings = CurationListing.exists?(["artist_id = ? OR owner_id = ?", existing_user.id, existing_user.id])
+      existing_curations = Curation.exists?(curator_id: existing_user.id)
+      existing_indexed_mints = MintedIndexer.exists?(["artist_id = ? OR owner_id = ?", existing_user.id, existing_user.id])
+      existing_sales_history = SalesHistory.exists?(["buyer_id = ? OR seller_id = ? OR artist_id = ?", existing_user.id, existing_user.id, existing_user.id])
+      existing_waitlist_signup = WaitlistSignup.exists?(user_id: existing_user.id)
+
+      #if unable to delete, then return all assoaciated addresses and tell the user to open that account and remove the address
+      if existing_names || existing_listings || existing_curations || existing_indexed_mints || existing_sales_history || existing_waitlist_signup
+        return render json: { status: 'error', msg: 'Address already in use', existing_user: existing_user }
+      end
+
+      #if not, then delete the user and continue adding
+      begin
+        unless existing_user.destroy
+          return render json: { status: 'error', msg: 'Unable to delete old account', existing_user: existing_user }
+        end
+
+        puts "user destroyed"
+      rescue => e
+        # Log the error and return a response indicating failure
+        Rails.logger.error "Failed to delete user: #{e.message}"
+        return render json: { status: 'error', msg: 'An error occurred while trying to delete old account', existing_user: existing_user }
+      end
+
     end
 
     keys = user.public_keys
@@ -182,6 +241,65 @@ class UserController < ApplicationController
     end
 
     render json: { status: 'success', user: user }
+  rescue StandardError => e
+    Rails.logger.error "Error adding wallet: #{e.message}"
+    render json: { status: 'error', msg: 'An unknown error has occurred' }
+  end
+
+  def merge_accounts
+    primary_user = User.find_by_api_key(params[:api_key])
+    merging_user = User.find_by_api_key(params[:merging_api_key])
+    return render json: { status: 'error', msg: 'Api keys not valid' } unless primary_user.present? && merging_user.present?
+
+    success = false;
+
+    ActiveRecord::Base.transaction do
+      # Merge the accounts
+
+      #artist_names
+      ArtistName.where(artist_id: merging_user.id).update_all(artist_id: primary_user.id)
+      
+      #curation_listings
+      CurationListing.where(artist_id: merging_user.id).update_all(artist_id: primary_user.id)
+      CurationListing.where(owner_id: merging_user.id).update_all(owner_id: primary_user.id)
+     
+      #curations
+      Curation.where(curator_id: merging_user.id).update_all(curator_id: primary_user.id)
+
+      #minted_indexer
+      MintedIndexer.where(artist_id: merging_user.id).update_all(artist_id: primary_user.id)
+      MintedIndexer.where(owner_id: merging_user.id).update_all(owner_id: primary_user.id)
+
+      #sales_history
+      SalesHistory.where(buyer_id: merging_user.id).update_all(buyer_id: primary_user.id)
+      SalesHistory.where(seller_id: merging_user.id).update_all(seller_id: primary_user.id)
+      SalesHistory.where(artist_id: merging_user.id).update_all(artist_id: primary_user.id)
+
+      #waitlist_signup
+      WaitlistSignup.where(user_id: merging_user.id).update_all(user_id: primary_user.id)
+
+      primary_keys = primary_user.public_keys || []
+      merging_keys = merging_user.public_keys || []
+
+      # Combine the keys from both users, ensuring uniqueness
+      combined_keys = (primary_keys + merging_keys).uniq
+      primary_user.public_keys = combined_keys
+      primary_user.save!
+
+      merging_user.destroy!
+
+      # if destroy is successful, then set success to true
+      success = true
+    end
+
+    if success
+      render json: { status: 'success', user: primary_user}
+    else
+      render json: { status: 'error', msg: 'Unable to merge accounts' }
+    end
+  rescue StandardError => e
+    Rails.logger.error "Error merging accounts: #{e.message}"
+    render json: { status: 'error', msg: 'An unknown error has occurred' }
   end
 
   def save

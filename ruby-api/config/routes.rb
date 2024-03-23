@@ -54,6 +54,7 @@ Rails.application.routes.draw do
     post '/verify', to: 'user#verify'
     post '/save_curations_order', to: 'user#save_curations_order'
     post '/update_display_name', to: 'user#update_display_name'
+    post '/merge_accounts', to: 'user#merge_accounts'
   end
 
   scope :following do
