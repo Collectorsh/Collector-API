@@ -57,8 +57,8 @@ class CurationController < ApplicationController
     )
 
     if curation.errors.any?
-      puts "Failed to save curation: #{listing.errors.full_messages.join(", ")}"
-      Rails.logger.error("Failed to save curation: #{listing.errors.full_messages.join(", ")}")
+      puts "Failed to save curation: #{curation.errors.full_messages.join(", ")}"
+      Rails.logger.error("Failed to save curation: #{curation.errors.full_messages.join(", ")}")
       return render json: { status: 'error', msg: "Failed to save Curation" }, status: :unprocessable_entity
     else
       return render json: { status: 'success', msg: 'Curation created' }
