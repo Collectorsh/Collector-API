@@ -8,7 +8,7 @@ class CurationController < ApplicationController
     
     user = User.find_by_api_key(params[:api_key])
     return render json: { status: 'error', msg: 'Api key not valid' } unless user 
-    return render json: { status: 'error', msg: 'Only approved curators can create a Curation' } unless user.subscription_level === "pro"
+    # return render json: { status: 'error', msg: 'Only approved curators can create a Curation' } unless user.subscription_level === "pro"
     puts "Creating curator curation: #{params[:name]}"
 
     # round fee to second decimal place
@@ -41,7 +41,7 @@ class CurationController < ApplicationController
     
     user = User.find_by_api_key(params[:api_key])
     return render json: { status: 'error', msg: 'Api key not valid' } unless user 
-    return render json: { status: 'error', msg: 'Only approved curators can create a Curation' } unless user.subscription_level === "pro"
+    # return render json: { status: 'error', msg: 'Only approved curators can create a Curation' } unless user.subscription_level === "pro"
     return render json: { status: 'error', msg: 'Proper curation type not sent' } unless params[:curation_type].present? && ["artist", "collector"].include?(params[:curation_type])
     puts "Creating personal curation: #{params[:name]}"
 

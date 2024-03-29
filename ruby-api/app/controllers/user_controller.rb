@@ -476,9 +476,9 @@ class UserController < ApplicationController
       return render json: { status: 'error', msg: 'Username not found' }
     end
 
-    unless user.subscription_level == 'pro'
-      return render json: { status: 'error', msg: 'User is not a curator' }
-    end
+    # unless user.subscription_level == 'pro'
+    #   return render json: { status: 'error', msg: 'User is not a curator' }
+    # end
 
     user_hash = user.public_info
     user_hash['curations'] = user.curations.where(hidden: false).map(&:condensed_with_curator_and_listings)
