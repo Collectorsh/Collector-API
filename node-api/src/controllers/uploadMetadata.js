@@ -85,22 +85,31 @@ export const uploadMetadata = async (req, res) => {
         })
       }
 
-      const metadataRes = await bundlrMetaplex
-        .nfts()
-        .uploadMetadata({
-          name,
-          description,
-          image: imageUriWithExtension,
-          animation_url: altUriWithExtension,
-          seller_fee_basis_points,
-          attributes,
-          external_url,
-          properties: {
-            category,
-            files,
-            creators
-          }
-        });
+      let metadataRes
+      try {
+        metadataRes = await bundlrMetaplex
+          .nfts()
+          .uploadMetadata({
+            name,
+            description,
+            image: imageUriWithExtension,
+            animation_url: altUriWithExtension,
+            seller_fee_basis_points,
+            attributes,
+            external_url,
+            properties: {
+              category,
+              files,
+              creators
+            }
+          });
+        
+        if(!metadataRes) throw new Error("Failed to upload metadata")
+      } catch (e) {
+        const err = parseError(e)
+        logtail.error(`uploadMetadata error: ${ err }`)
+        res.status(500).json({ error: err })
+      }
       
       const uri = metadataRes.uri
       const metadata = metadataRes.metadata
@@ -131,7 +140,7 @@ export const uploadMetadata = async (req, res) => {
 
   } catch (e) {
     const err = parseError(e)
-    logtail.error(`uploadMetadata error: ${err}`)
+    logtail.error(`uploadMetadata Route error: ${err}`)
     res.status(500).json({ error: err })
   }
 }
