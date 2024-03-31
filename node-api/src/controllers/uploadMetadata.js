@@ -2,7 +2,7 @@
 import crypto from "crypto"
 import fs from "fs"
 import path from "path"
-import { Keypair, Connection } from "@solana/web3.js";
+import { Keypair, Connection, sendAndConfirmTransaction } from "@solana/web3.js";
 import { Metaplex, bundlrStorage, keypairIdentity, toMetaplexFile, toMetaplexFileFromBrowser } from "@metaplex-foundation/js";
 import { formatRSAPrivateKey } from '../utils/formatRSA.js';
 import { connection } from "../utils/RpcConnection.js";
