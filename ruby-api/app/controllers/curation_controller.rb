@@ -111,6 +111,62 @@ class CurationController < ApplicationController
     render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
   end
 
+  def search_published
+
+    search = params[:search].downcase
+
+    curations = Curation.joins("INNER JOIN users ON users.id = curations.curator_id").where(
+    "(LOWER(curations.name) LIKE :search OR LOWER(users.name) LIKE :search OR LOWER(users.username) LIKE :search) AND curations.hidden = :hidden AND curations.is_published = :published", 
+    search: "%#{search}%", 
+    hidden: false, 
+    published: true
+  )
+    
+    if curations.empty?
+      return render json: { error: "Curation not found" }, status: :not_found
+    end
+
+    curations_hash = curations.map(&:condensed_with_curator)
+    
+    render json: {curation_results: curations_hash}
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
+  def get_all_published
+    order_by = "first_published_at DESC" #recent
+
+    if params[:order_by] == "a-z"
+      order_by = "name ASC"
+    elsif params[:order_by] == "z-a"
+      order_by = "name DESC"
+    elsif params[:order_by] == "oldest"
+      order_by = "first_published_at ASC"
+    elsif params[:order_by] == "most-sales"
+      # order_by = "sale_count DESC" # argrigate from sales_history
+    else params[:order_by] == "popular"
+      # order_by = "view_count DESC" #get from view stats
+    end
+
+    # Pagination
+    page = params[:page].to_i || 1
+    per_page = params[:per_page].to_i || 12
+    offset = (page - 1) * per_page
+
+    curations = Curation.where(hidden: false, is_published: true).order(order_by).offset(offset).limit(per_page)
+    curation_total = Curation.where(hidden: false, is_published: true).count
+
+    if curations.empty?
+      return render json: { error: "Curation not found" }, status: :not_found
+    end
+
+    curations_hash = curations.map(&:condensed_with_curator)
+    
+    render json: {curation_results: curations_hash, total: curation_total}
+  rescue StandardError => e
+    render json: { error: "An error occurred: #{e.message}" }, status: :internal_server_error
+  end
+
   def get_listings_and_artists_by_name
     # unless curation = Curation.find_by("LOWER(name) = ?", params[:name].downcase)
     #   return render json: { error: "Curation not found" }, status: :not_found
