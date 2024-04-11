@@ -134,6 +134,14 @@ class CurationController < ApplicationController
   end
 
   def get_all_published
+    
+    # Pagination
+    page = params[:page].to_i || 1
+    per_page = params[:per_page].to_i || 12
+    offset = (page - 1) * per_page
+    
+    custom_curation_query = nil
+
     order_by = "first_published_at DESC" #recent
 
     if params[:order_by] == "a-z"
@@ -143,17 +151,74 @@ class CurationController < ApplicationController
     elsif params[:order_by] == "oldest"
       order_by = "first_published_at ASC"
     elsif params[:order_by] == "most-sales"
-      # order_by = "sale_count DESC" # argrigate from sales_history
-    else params[:order_by] == "popular"
-      # order_by = "view_count DESC" #get from view stats
+      custom_curation_query_ids = Curation.select("curations.id, curations.name, COALESCE(SUM(sales_history.price), 0) AS total_sales")
+                                      .joins("LEFT JOIN sales_history ON sales_history.curation_id = curations.id")
+                                      .where(hidden: false, is_published: true)
+                                      .group("curations.id")
+                                       .order(Arel.sql('COALESCE(SUM(sales_history.price), 0) DESC'))
+                                      .limit(per_page)
+                                      .offset(offset)
+                                      .pluck(:id)  # Fetches only the IDs
+
+      custom_curations = Curation.where(id: custom_curation_query_ids)
+
+      custom_curation_query = custom_curation_query_ids.map{|id| custom_curations.find{|c| c.id == id}}
+
+    # elsif params[:order_by] == "popular"
+    #   # Set up the query parameters
+    #   url = "https://plausible.io/api/v1/stats/breakdown"
+
+    #   query_params = {
+    #     site_id: 'collector.sh',
+    #     period: '30d',
+    #     property: 'event:page',
+    #     limit: 10,
+    #     filters: 'event:page==/*/*'
+    #   }
+
+    #   # Include the Authorization header with the Bearer token
+    #   headers = {
+    #     "Authorization" => "Bearer #{ENV['PLAUSIBLE_API_KEY']}",
+    #     "Content-Type" => "application/json"
+    #   }
+
+    #   # Perform the GET request with HTTParty
+    #   plausible_results = HTTParty.get(url, query: query_params, headers: headers)
+
+    #   if plausible_results.code == 200
+
+    #     parse_results = []
+
+    #     plausible_results.parsed_response["results"].each do |result|
+    #       page_path = result["page"] # Assuming 'page' is the key where the path is stored
+    #       parts = page_path.split('/').reject(&:empty?) # Split by '/', and remove empty strings if any
+    #       if parts.size >= 2 && parts[0] != "art" && parts[0] != "curations"
+    #         # Output the second part of the page path
+    #         parse_results << parts[1]
+    #       end
+    #     end
+
+    #     paginated_results = parse_results[offset, per_page]  # This will fetch the slice of results for the current page
+
+    #     puts "Paginated results: #{paginated_results}"
+
+    #     custom_curations = Curation.where(hidden: false, is_published: true, name: paginated_results)
+
+    #     custom_curation_query = paginated_results.map{|name| custom_curations.find{|c| c.name == name}}
+    #     custom_curation_query = custom_curation_query.compact
+
+    #   end
     end
 
-    # Pagination
-    page = params[:page].to_i || 1
-    per_page = params[:per_page].to_i || 12
-    offset = (page - 1) * per_page
 
-    curations = Curation.where(hidden: false, is_published: true).order(order_by).offset(offset).limit(per_page)
+    curations = nil
+    
+    if (custom_curation_query.present?) 
+      curations = custom_curation_query;
+    else 
+      curations = Curation.where(hidden: false, is_published: true).order(order_by).offset(offset).limit(per_page)
+    end
+
     curation_total = Curation.where(hidden: false, is_published: true).count
 
     if curations.empty?
