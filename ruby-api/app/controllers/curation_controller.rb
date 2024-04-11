@@ -164,50 +164,50 @@ class CurationController < ApplicationController
 
       custom_curation_query = custom_curation_query_ids.map{|id| custom_curations.find{|c| c.id == id}}
 
-    elsif params[:order_by] == "popular"
-      # Set up the query parameters
-      url = "https://plausible.io/api/v1/stats/breakdown"
+    # elsif params[:order_by] == "popular"
+    #   # Set up the query parameters
+    #   url = "https://plausible.io/api/v1/stats/breakdown"
 
-      query_params = {
-        site_id: 'collector.sh',
-        period: '30d',
-        property: 'event:page',
-        limit: 10,
-        filters: 'event:page==/*/*'
-      }
+    #   query_params = {
+    #     site_id: 'collector.sh',
+    #     period: '30d',
+    #     property: 'event:page',
+    #     limit: 10,
+    #     filters: 'event:page==/*/*'
+    #   }
 
-      # Include the Authorization header with the Bearer token
-      headers = {
-        "Authorization" => "Bearer #{ENV['PLAUSIBLE_API_KEY']}",
-        "Content-Type" => "application/json"
-      }
+    #   # Include the Authorization header with the Bearer token
+    #   headers = {
+    #     "Authorization" => "Bearer #{ENV['PLAUSIBLE_API_KEY']}",
+    #     "Content-Type" => "application/json"
+    #   }
 
-      # Perform the GET request with HTTParty
-      plausible_results = HTTParty.get(url, query: query_params, headers: headers)
+    #   # Perform the GET request with HTTParty
+    #   plausible_results = HTTParty.get(url, query: query_params, headers: headers)
 
-      if plausible_results.code == 200
+    #   if plausible_results.code == 200
 
-        parse_results = []
+    #     parse_results = []
 
-        plausible_results.parsed_response["results"].each do |result|
-          page_path = result["page"] # Assuming 'page' is the key where the path is stored
-          parts = page_path.split('/').reject(&:empty?) # Split by '/', and remove empty strings if any
-          if parts.size >= 2 && parts[0] != "art" && parts[0] != "curations"
-            # Output the second part of the page path
-            parse_results << parts[1]
-          end
-        end
+    #     plausible_results.parsed_response["results"].each do |result|
+    #       page_path = result["page"] # Assuming 'page' is the key where the path is stored
+    #       parts = page_path.split('/').reject(&:empty?) # Split by '/', and remove empty strings if any
+    #       if parts.size >= 2 && parts[0] != "art" && parts[0] != "curations"
+    #         # Output the second part of the page path
+    #         parse_results << parts[1]
+    #       end
+    #     end
 
-        paginated_results = parse_results[offset, per_page]  # This will fetch the slice of results for the current page
+    #     paginated_results = parse_results[offset, per_page]  # This will fetch the slice of results for the current page
 
-        puts "Paginated results: #{paginated_results}"
+    #     puts "Paginated results: #{paginated_results}"
 
-        custom_curations = Curation.where(hidden: false, is_published: true, name: paginated_results)
+    #     custom_curations = Curation.where(hidden: false, is_published: true, name: paginated_results)
 
-        custom_curation_query = paginated_results.map{|name| custom_curations.find{|c| c.name == name}}
-        custom_curation_query = custom_curation_query.compact
+    #     custom_curation_query = paginated_results.map{|name| custom_curations.find{|c| c.name == name}}
+    #     custom_curation_query = custom_curation_query.compact
 
-      end
+    #   end
     end
 
 
