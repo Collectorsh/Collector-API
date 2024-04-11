@@ -172,6 +172,7 @@ Rails.application.routes.draw do
     post '/create_personal', to: 'curation#create_personal'
     post '/get_by_name', to: 'curation#get_by_name'
     post '/search_by_name', to: 'curation#search_by_name'
+    post '/search_published', to: 'curation#search_published'
     post '/get_listings_and_artists_by_name', to: 'curation#get_listings_and_artists_by_name'
     post '/get_private_content', to: 'curation#get_private_content'
     post '/get_viewer_private_content', to: 'curation#get_viewer_private_content'
@@ -190,6 +191,7 @@ Rails.application.routes.draw do
     post '/get_all_curator_curations_with_private_hash', to: 'curation#get_all_curator_curations_with_private_hash'
     post '/hide_curation', to: 'curation#hide_curation'
     get '/get_latest_curations', to: 'curation#get_latest_curations'
+    post '/get_all_published', to: 'curation#get_all_published'
   end
 
   scope :curation_listing do
